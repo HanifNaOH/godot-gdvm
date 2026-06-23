@@ -58,3 +58,15 @@ const ObserverPackTree = preload("./binder/observer_pack/tree/base.gd")
 
 const WriterPack = preload("./binder/writer_pack/base.gd")
 const WriterPackTree = preload("./binder/writer_pack/tree/base.gd")
+
+# MVVM Toolkit integration — equivalent to CommunityToolkit.Mvvm
+const ObservableObject = preload("./core/component_model/observable_object.gd")
+const ObservableRecipient = preload("./core/component_model/observable_recipient.gd")
+
+const RelayCommand = preload("./core/input/relay_command.gd")
+const AsyncRelayCommand = preload("./core/input/async_relay_command.gd")
+
+const Messenger = preload("./core/messaging/messenger.gd")
+const RequestMessage = preload("./core/messaging/request_message.gd")
+
+const ServiceLocator = preload("./core/dependency_injection/service_locator.gd")
