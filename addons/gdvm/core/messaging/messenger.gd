@@ -24,6 +24,7 @@
 ##   Messenger.default().unregister(self, &"user_logged_in")  # one type
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/messenger
+class_name Messenger
 extends RefCounted
 
 ## The default singleton Messenger instance.

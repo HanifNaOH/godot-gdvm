@@ -111,7 +111,7 @@ func _init(value: Color) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_COLOR)
+	assert(is_instance_of(value, TYPE_COLOR))
 	_data = value
 	return true
 

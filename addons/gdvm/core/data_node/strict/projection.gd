@@ -31,7 +31,7 @@ func _init(value: Projection) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_PROJECTION)
+	assert(is_instance_of(value, TYPE_PROJECTION))
 	_data = value
 	return true
 

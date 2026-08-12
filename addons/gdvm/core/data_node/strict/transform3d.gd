@@ -19,7 +19,7 @@ func _init(value: Transform3D) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_TRANSFORM3D)
+	assert(is_instance_of(value, TYPE_TRANSFORM3D))
 	_data = value
 	return true
 

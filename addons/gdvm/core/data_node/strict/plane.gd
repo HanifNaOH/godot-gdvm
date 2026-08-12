@@ -37,7 +37,7 @@ func _init(value: Plane) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_PLANE)
+	assert(is_instance_of(value, TYPE_PLANE))
 	_data = value
 	return true
 

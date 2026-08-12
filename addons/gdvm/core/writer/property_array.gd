@@ -102,7 +102,7 @@ func _on_order_changed(data_node: DataNode) -> void:
 			var target_element_id: int = target_element.get_instance_id()
 			var element_info := _sub_writer.element_map[i]
 			if not (element_info != null and \
-			element_info.source_child_id == source_element_id and \
+			element_info.source_element_id == source_element_id and \
 			element_info.target_element_id == target_element_id):
 				var new_info := {
 					s = source_element,

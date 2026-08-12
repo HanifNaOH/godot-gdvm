@@ -25,7 +25,7 @@ func _init(value: AABB) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_AABB)
+	assert(is_instance_of(value, TYPE_AABB))
 	_data = value
 	return true
 

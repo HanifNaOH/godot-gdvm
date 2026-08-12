@@ -25,7 +25,7 @@ func _init(value: Basis) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_BASIS)
+	assert(is_instance_of(value, TYPE_BASIS))
 	_data = value
 	return true
 

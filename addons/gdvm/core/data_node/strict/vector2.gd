@@ -19,7 +19,7 @@ func _init(value: Vector2) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & (TYPE_VECTOR2 | TYPE_VECTOR2I))
+	assert(is_instance_of(value, TYPE_VECTOR2) or is_instance_of(value, TYPE_VECTOR2I))
 	_data = value
 	return true
 

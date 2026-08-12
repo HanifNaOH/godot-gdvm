@@ -21,8 +21,8 @@
 ##   )
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/relaycommand
+class_name RelayCommand
 extends RefCounted
-const RelayCommand = preload("./relay_command.gd")
 
 ## Emitted when the result of can_execute() might have changed.
 ## View elements should listen to this to update enabled/disabled state.

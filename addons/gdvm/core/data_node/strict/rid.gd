@@ -7,7 +7,7 @@ func _init(value: RID) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_RID)
+	assert(is_instance_of(value, TYPE_RID))
 	_data = value
 	return true
 

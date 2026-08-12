@@ -22,6 +22,7 @@
 ##   var audio: AudioManager = ServiceLocator.resolve(&"AudioManager")
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/ioc
+class_name ServiceLocator
 extends RefCounted
 
 ## Singleton storage: { type_name(StringName): {factory: Callable, singleton: bool, instance} }

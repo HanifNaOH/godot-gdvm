@@ -12,8 +12,8 @@
 ##   class PlayerModel extends ObservableObject:
 ##     var health: int:
 ##       set(v):
-##         if set_property(health, v):  # compare & emit
-##           health = v                 # write inside setter (safe, no recursion)
+##         if set_property(&"health", health, v):  # compare & emit
+##           health = v                            # write inside setter (safe, no recursion)
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/observableobject
 extends RefCounted
@@ -22,17 +22,24 @@ const ObservableObject = preload("./observable_object.gd")
 ## Emitted when any property changes via set_property.
 ## Follows the same convention as DataNode.changed —
 ## Observer classes can connect this to DataNode.render().
-signal changed
+## [property_name] The name of the property that changed (empty for bulk changes).
+## [old_value] The value before the change.
+## [new_value] The candidate new value.
+signal changed(property_name: StringName, old_value, new_value)
 
-## Compare old_value against new_value. If different, emit `changed` and
-## return true. The CALLER must perform the actual write inside the setter
-## body — `property = value` inside a setter does NOT recurse in GDScript.
+## Compare old_value against new_value. If different, run the changing/changed
+## hooks, emit `changed`, and return true. The CALLER must perform the actual
+## write inside the setter body — `property = value` inside a setter does NOT
+## recurse in GDScript.
 ##
+## [property_name] The name of the property being set.
 ## [old_value] The current value of the property (read with getter or `property`).
 ## [new_value] The candidate new value.
-func set_property(old_value, new_value) -> bool:
+func set_property(property_name: StringName, old_value, new_value) -> bool:
 	if old_value != new_value:
-		changed.emit()
+		on_property_changing(property_name, old_value, new_value)
+		on_property_changed(property_name)
+		changed.emit(property_name, old_value, new_value)
 		return true
 	return false
 
@@ -46,8 +53,13 @@ func set_properties(checks: Dictionary) -> int:
 		var pair: Array = checks[property_name]
 		if pair[0] != pair[1]:
 			change_count += 1
+			on_property_changing(property_name, pair[0], pair[1])
 	if change_count > 0:
-		changed.emit()
+		for property_name: StringName in checks:
+			var pair: Array = checks[property_name]
+			if pair[0] != pair[1]:
+				on_property_changed(property_name)
+		changed.emit(&"", null, null)
 	return change_count
 
 ## Check if a property would change (without side effects).
@@ -55,11 +67,11 @@ func would_change(old_value, new_value) -> bool:
 	return old_value != new_value
 
 ## Override this to react to property changes in subclasses.
-## Called BEFORE the `changed` signal is emitted.
-func on_property_changed(property_name: StringName) -> void:
+## Called BEFORE the value is set and BEFORE `changed` is emitted.
+func on_property_changing(property_name: StringName, old_value, new_value) -> void:
 	pass
 
 ## Override this to react to property changes in subclasses.
-## Called BEFORE the value is set.
-func on_property_changing(property_name: StringName, old_value, new_value) -> void:
+## Called AFTER the value is set (by the caller) and BEFORE `changed` is emitted.
+func on_property_changed(property_name: StringName) -> void:
 	pass

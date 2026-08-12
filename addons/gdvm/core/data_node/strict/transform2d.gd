@@ -25,7 +25,7 @@ func _init(value: Transform2D) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_TRANSFORM2D)
+	assert(is_instance_of(value, TYPE_TRANSFORM2D))
 	_data = value
 	return true
 

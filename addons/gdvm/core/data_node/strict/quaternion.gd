@@ -31,7 +31,7 @@ func _init(value: Quaternion) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & TYPE_QUATERNION)
+	assert(is_instance_of(value, TYPE_QUATERNION))
 	_data = value
 	return true
 

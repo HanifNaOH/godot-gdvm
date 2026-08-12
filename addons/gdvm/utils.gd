@@ -184,7 +184,7 @@ static func type_is_type(sub_type: Variant, super_type: Variant) -> bool:
 			assert(super_type is Script, "instance_is_type error: _element_should be a script, got %s. It should not happen!" % [(super_type as Object).get_class()])
 			var parent_script := sub_type as Script
 			while parent_script != null:
-				if sub_type == super_type:
+				if parent_script == super_type:
 					result = true
 					break
 				parent_script = parent_script.get_base_script()
@@ -215,7 +215,7 @@ static func instance_is_array(instance: Variant) -> bool:
 
 ## 判断能否转换为NodePath
 static func type_can_be_nodepath(type: Variant) -> bool:
-	return type is int and type & (TYPE_STRING | TYPE_STRING_NAME | TYPE_NODE_PATH)
+	return type is int and (type == TYPE_STRING or type == TYPE_STRING_NAME or type == TYPE_NODE_PATH)
 
 ## 获取数组的元素类型 无类型将返回null（并不是TYPE_NIL）
 static func array_get_element_type(array: Variant) -> Variant:

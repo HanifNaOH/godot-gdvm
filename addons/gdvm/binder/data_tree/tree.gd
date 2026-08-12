@@ -56,7 +56,7 @@ func duplicate(include_observations: bool = false) -> DataTree:
 			result.observe(_observer_pack)
 		else:
 			push_warning("DataTree: Duplicate with observations, but this DataTree is not observing anything or observation is invalid.")
-	return DataTree.new(_template)
+	return result
 
 func get_root() -> DataNode:
 	return _root

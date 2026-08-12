@@ -7,7 +7,7 @@ func _init(value: String) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & (TYPE_STRING | TYPE_STRING_NAME | TYPE_NODE_PATH))
+	assert(is_instance_of(value, TYPE_STRING) or is_instance_of(value, TYPE_STRING_NAME) or is_instance_of(value, TYPE_NODE_PATH))
 	_data = str(value)
 	return true
 

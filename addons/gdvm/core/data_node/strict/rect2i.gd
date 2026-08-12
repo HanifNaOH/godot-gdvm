@@ -25,7 +25,7 @@ func _init(value: Rect2i) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & (TYPE_RECT2 | TYPE_RECT2I))
+	assert(is_instance_of(value, TYPE_RECT2) or is_instance_of(value, TYPE_RECT2I))
 	_data = value
 	return true
 

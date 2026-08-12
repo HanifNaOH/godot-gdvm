@@ -21,7 +21,7 @@
 ##   # Sender requests:
 ##   var msg = RequestMessage.new()
 ##   Messenger.default().send(&"get_current_user", msg)
-##   var user = msg.get_response()  # blocks until reply
+##   var user = msg.get_response()  # returns the reply value, or null if none
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/messenger
 
@@ -56,7 +56,8 @@ class RequestMessage:
 
 
 ## A message that requests an async value from the receiver.
-## The receiver should call reply() with a value or a Signal/GDScriptFunctionState.
+## The receiver should call reply() with a value or a Signal (the only awaitable
+## return type in Godot 4).
 class AsyncRequestMessage:
 	var _response = null
 	var _has_response: bool = false
@@ -75,7 +76,7 @@ class AsyncRequestMessage:
 		if result is Signal:
 			result = await result
 
-		return _has_response
+		return result
 
 
 ## A message requesting a collection of items.

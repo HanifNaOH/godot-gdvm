@@ -22,6 +22,7 @@
 ##   )
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/relaycommand
+class_name AsyncRelayCommand
 extends RelayCommand
 const RelayCommand = preload("./relay_command.gd")
 
@@ -53,16 +54,16 @@ func _execute_async() -> void:
 	notify_can_execute_changed()
 	
 	var result = _async_execute.call()
-	# The async callable may return a Signal (emitted when done),
-	# or a GDScriptFunctionState (which has a `completed` signal).
-	# We connect to either to know when the async work finishes.
+	# In Godot 4, an async callable returns a Signal: either an explicit signal
+	# (e.g. `timer.timeout`) or the coroutine's implicit completion signal when
+	# the callable body contains `await`. We connect to it to know when the
+	# async work finishes. A non-Signal return means the work completed
+	# synchronously (no `await`), so we finish immediately.
 	if result is Signal:
 		if not result.is_connected(_on_async_finished):
 			result.connect(_on_async_finished, CONNECT_ONE_SHOT)
 		else:
 			_on_async_finished()
-	elif result != null and result.has_method(&"is_valid") and result.has_signal(&"completed"):
-		result.completed.connect(_on_async_finished, CONNECT_ONE_SHOT)
 	else:
 		# Synchronous completion (no async callable)
 		_on_async_finished()

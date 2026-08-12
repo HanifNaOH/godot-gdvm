@@ -7,7 +7,7 @@ func _init(value: float) -> void:
 	render(value)
 
 func _set_value(value: Variant) -> bool:
-	assert(typeof(value) & (TYPE_INT | TYPE_BOOL | TYPE_FLOAT))
+	assert(is_instance_of(value, TYPE_INT) or is_instance_of(value, TYPE_BOOL) or is_instance_of(value, TYPE_FLOAT))
 	_data = value
 	return true
 

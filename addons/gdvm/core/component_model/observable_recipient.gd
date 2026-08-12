@@ -75,6 +75,8 @@ func _unregister_all() -> void:
 ## Override to auto-deactivate on free.
 ## Inline the cleanup rather than calling deactivate() to avoid
 ## calling methods on a partially-freed instance during NOTIFICATION_PREDELETE.
+## NOTE: NOTIFICATION_PREDELETE fires for both Node and RefCounted, so
+## RefCounted recipients are cleaned up automatically too.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		if _messenger != null:
