@@ -30,7 +30,13 @@ project/assembly_name="Godot GDVM"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gdvm/plugin.cfg", "res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/gdvm/plugin.cfg", "res://addons/godot-plugin-refresher/plugin.cfg", "res://addons/gut/plugin.cfg")
+
+[gdunit4]
+
+settings/test/test_lookup_folder="tests"
+settings/test/test_discovery=true
+settings/test/flaky_check_enable=true
 
 [rendering]
 
