@@ -1,0 +1,78 @@
+[gd_scene format=3 uid="uid://bber2ff5sj71"]
+
+[ext_resource type="Script" uid="uid://bhrphhmlb1ox3" path="res://examples/_9_widget_blueprint/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://bgraomfuf3mly" path="res://addons/gdvm/core/view/gdvm_view.gd" id="2_rp6cu"]
+
+[node name="Main" type="Control" unique_id=581116055]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Panel" type="Panel" parent="." unique_id=1614600119]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=274158133]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -80.0
+offset_right = 150.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GreetingLabel" type="Label" parent="Panel/VBox" unique_id=472109596]
+layout_mode = 2
+text = "Hello"
+metadata/_gdvm_binding = {
+"mode": "one_way",
+"path": "greeting",
+"prop": "text"
+}
+
+[node name="CountLabel" type="Label" parent="Panel/VBox" unique_id=589324417]
+layout_mode = 2
+text = "0"
+metadata/_gdvm_binding = {
+"mode": "one_way",
+"path": "count",
+"prop": "text"
+}
+
+[node name="WorldTimeLabel" type="Label" parent="Panel/VBox" unique_id=620155342]
+layout_mode = 2
+text = "--"
+metadata/_gdvm_binding = {
+"mode": "one_way",
+"path": "world_time",
+"prop": "text"
+}
+
+[node name="UpdateButton" type="Button" parent="Panel/VBox" unique_id=583754026]
+layout_mode = 2
+text = "Update Greeting"
+
+[node name="CountButton" type="Button" parent="Panel/VBox" unique_id=593812468]
+layout_mode = 2
+text = "Increment Count"
+
+[node name="WorldTimeButton" type="Button" parent="Panel/VBox" unique_id=641035226]
+layout_mode = 2
+text = "Fetch World Time"
+
+[node name="GdvmView" type="Node" parent="." unique_id=1054197072]
+script = ExtResource("2_rp6cu")
+metadata/_custom_type_script = "uid://bgraomfuf3mly"
