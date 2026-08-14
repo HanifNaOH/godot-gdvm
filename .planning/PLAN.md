@@ -1,4 +1,4 @@
-# GDVM Audit Plan
+# GDVM Audit — Plan
 
 ## Done
 
