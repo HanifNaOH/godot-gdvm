@@ -1,14 +1,14 @@
-[gd_scene load_steps=2 format=3 uid="uid://clmm54qkt3hbw"]
+[gd_scene format=3 uid="uid://clmm54qkt3hbw"]
 
 [ext_resource type="Texture2D" uid="uid://duvirw6bnj3f5" path="res://icon.svg" id="1_63kc6"]
 
-[node name="Main" type="Node"]
+[node name="Main" type="Node" unique_id=2114028199]
 
-[node name="Node" type="Node" parent="."]
+[node name="Node" type="Node" parent="." unique_id=1107873686]
 
-[node name="DemoSprite" type="Node2D" parent="."]
+[node name="DemoSprite" type="Node2D" parent="." unique_id=1506245947]
 
-[node name="Sprite2D" type="Sprite2D" parent="DemoSprite"]
+[node name="Sprite2D" type="Sprite2D" parent="DemoSprite" unique_id=1648640573]
 texture = ExtResource("1_63kc6")
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=172967696]
