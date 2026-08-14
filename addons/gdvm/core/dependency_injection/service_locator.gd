@@ -69,7 +69,6 @@ static func register_lazy_singleton(type_name: StringName, factory: Callable) ->
 ## Singleton services return the cached instance.
 static func resolve(type_name: StringName):
 	if not _services.has(type_name):
-		push_error("ServiceLocator.resolve: service '%s' is not registered." % type_name)
 		return null
 	
 	var entry: Dictionary = _services[type_name]

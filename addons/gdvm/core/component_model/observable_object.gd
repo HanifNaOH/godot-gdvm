@@ -62,6 +62,17 @@ func set_properties(checks: Dictionary) -> int:
 		changed.emit(&"", null, null)
 	return change_count
 
+## Manually notify listeners that a property has changed.
+## Equivalent to CommunityToolkit's [ObservableProperty] manual notification and
+## Unreal's UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED.
+## Use when a value changes outside a standard setter (e.g. an internal mutation
+## that bypasses set_property), so bound Views can still refresh.
+## Emits the property's CURRENT value as new_value (old is unknown/null).
+## [property_name] The name of the property to refresh (empty for bulk).
+func notify_property_changed(property_name: StringName) -> void:
+	on_property_changed(property_name)
+	changed.emit(property_name, null, get(property_name))
+
 ## Check if a property would change (without side effects).
 func would_change(old_value, new_value) -> bool:
 	return old_value != new_value

@@ -70,3 +70,6 @@ const Messenger = preload("./core/messaging/messenger.gd")
 const RequestMessage = preload("./core/messaging/request_message.gd")
 
 const ServiceLocator = preload("./core/dependency_injection/service_locator.gd")
+
+# View layer — Widget-Blueprint-style declarative binding
+const GdvmView = preload("./core/view/gdvm_view.gd")
