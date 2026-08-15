@@ -23,6 +23,9 @@ jobs:
           version: "4.7.1"
           use-dotnet: false
 
+      - name: Import project (register class_names)
+        run: godot --headless --path . --import --quit
+
       - name: Run GUT tests
         run: godot --headless --path . -s addons/gut/gut_cmdln.gd -gexit
 
