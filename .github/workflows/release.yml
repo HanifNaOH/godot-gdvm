@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,7 +21,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
@@ -35,7 +41,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "tag_name=v${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "zip_name=gdvm-v${VERSION}.zip" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "zip_name=gdvm-${{ github.ref_name }}.zip" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Package addon
         run: |
@@ -44,10 +62,11 @@ jobs:
           cp LICENSE dist/addons/gdvm/
           cp README.md dist/addons/gdvm/
           cd dist
-          zip -r "../gdvm-${{ github.ref_name }}.zip" addons
+          zip -r "../${{ steps.version.outputs.zip_name }}" addons
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: "gdvm-${{ github.ref_name }}.zip"
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          files: ${{ steps.version.outputs.zip_name }}
           generate_release_notes: true
