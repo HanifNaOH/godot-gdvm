@@ -1,0 +1,49 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: "Run GDVM tests"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: abarichello/godot-ci@v1
+        with:
+          version: "4.7.1"
+
+      - name: Run GUT tests
+        run: godot --headless --path . -s addons/gut/gut_cmdln.gd -gexit
+
+  release:
+    name: "Package and publish release"
+    needs: test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Package addon
+        run: |
+          mkdir -p dist/addons
+          cp -r addons/gdvm dist/addons/
+          cp LICENSE dist/addons/gdvm/
+          cp README.md dist/addons/gdvm/
+          cd dist
+          zip -r "../gdvm-${{ github.ref_name }}.zip" addons
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "gdvm-${{ github.ref_name }}.zip"
+          generate_release_notes: true

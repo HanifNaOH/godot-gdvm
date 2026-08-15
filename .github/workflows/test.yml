@@ -1,0 +1,31 @@
+name: test
+run-name: ${{ github.head_ref || github.ref_name }}-gdvm-test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: gdvm-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-test:
+    name: "GDVM GUT Tests"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: abarichello/godot-ci@v1
+        with:
+          version: "4.7.1"
+
+      - name: Run GUT tests
+        run: godot --headless --path . -s addons/gut/gut_cmdln.gd -gexit

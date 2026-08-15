@@ -1,5 +1,6 @@
 # Godot View Model by GDScript
 
+[![Tests](https://github.com/HanifNaOH/godot-gdvm/actions/workflows/test.yml/badge.svg)](https://github.com/HanifNaOH/godot-gdvm/actions/workflows/test.yml)
 [![Documentation Status](https://readthedocs.org/projects/godot-gdvm/badge/?version=latest)](https://godot-gdvm.readthedocs.io/zh-cn/latest/)
 [![GitHub License](https://img.shields.io/github/license/qt911025/godot-gdvm)](https://github.com/qt911025/godot-gdvm/blob/main/LICENSE)
 
