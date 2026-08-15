@@ -71,8 +71,7 @@ var _change_signal: StringName = &"changed"
 ## (global) The ServiceLocator key to resolve the ViewModel under.
 @export var view_model_key: StringName
 
-## The ServiceLocator type, resolved lazily to avoid a hard static dependency.
-const ServiceLocator = preload("res://addons/gdvm/core/dependency_injection/service_locator.gd")
+## The ServiceLocator is a global class_name; resolved directly (no hard path).
 
 ## Active bindings.
 var _bindings: Array = []

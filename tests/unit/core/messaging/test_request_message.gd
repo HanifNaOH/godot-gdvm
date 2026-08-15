@@ -29,6 +29,7 @@ func test_request_message_no_response_returns_null() -> void:
 
 	assert_null(msg.get_response())
 	assert_false(msg.has_response())
+	assert_push_warning("No response was provided")
 
 
 # ─── AsyncRequestMessage ───────────────────────────────────────────────────
@@ -57,6 +58,7 @@ func test_async_request_message_no_response() -> void:
 	var msg := RequestMessage.AsyncRequestMessage.new()
 
 	assert_null(await msg.get_response())
+	assert_push_warning("No response was provided")
 
 
 # ─── CollectionRequestMessage ──────────────────────────────────────────────
@@ -77,3 +79,4 @@ func test_collection_request_message_no_response() -> void:
 
 	assert_eq(msg.get_response(), [])
 	assert_false(msg.has_response())
+	assert_push_warning("No response was provided")

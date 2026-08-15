@@ -10,9 +10,10 @@
 ##
 ## Usage:
 ##   class PlayerViewModel extends ObservableRecipient:
-##     signal changed
 ##     var player_name: String:
-##       set(v): set_property(&"player_name", player_name, v)
+##       set(v):
+##         if set_property(&"player_name", player_name, v):
+##           player_name = v
 ##
 ##     func _init():
 ##       messenger_register(&"player_died", _on_player_died)
@@ -21,8 +22,8 @@
 ##       player_name = "Dead"
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/observablerecipient
-extends "./observable_object.gd"
-const Messenger = preload("../messaging/messenger.gd")
+class_name ObservableRecipient
+extends ObservableObject
 
 
 var _messenger

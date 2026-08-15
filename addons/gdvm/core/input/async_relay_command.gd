@@ -24,7 +24,6 @@
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/relaycommand
 class_name AsyncRelayCommand
 extends RelayCommand
-const RelayCommand = preload("./relay_command.gd")
 
 
 ## Emitted when execution starts (true) and finishes (false).

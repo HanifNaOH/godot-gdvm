@@ -16,12 +16,11 @@
 ##           health = v                            # write inside setter (safe, no recursion)
 ##
 ## @see https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/observableobject
+class_name ObservableObject
 extends RefCounted
-const ObservableObject = preload("./observable_object.gd")
 
 ## Emitted when any property changes via set_property.
-## Follows the same convention as DataNode.changed —
-## Observer classes can connect this to DataNode.render().
+## Follows the `changed` signal convention (the FieldNotify equivalent).
 ## [property_name] The name of the property that changed (empty for bulk changes).
 ## [old_value] The value before the change.
 ## [new_value] The candidate new value.
@@ -31,6 +30,14 @@ signal changed(property_name: StringName, old_value, new_value)
 ## hooks, emit `changed`, and return true. The CALLER must perform the actual
 ## write inside the setter body — `property = value` inside a setter does NOT
 ## recurse in GDScript.
+##
+## IMPORTANT — emit-before-write contract:
+##   `changed` is emitted BEFORE the setter body writes the value. Listeners that
+##   need the new value MUST use the signal's `new_value` argument (authoritative),
+##   and MUST NOT re-read the property inside the `changed` handler (they would
+##   observe the stale/old value). This is the GDVM analogue of Unreal's
+##   FieldNotify broadcast: the notification describes the change, the caller
+##   completes the write immediately after.
 ##
 ## [property_name] The name of the property being set.
 ## [old_value] The current value of the property (read with getter or `property`).

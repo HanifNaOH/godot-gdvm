@@ -1,7 +1,5 @@
 extends GutTest
 
-const ObservableRecipient = Gdvm.ObservableRecipient
-
 
 class Recipient extends ObservableRecipient:
 	var received: Array = []

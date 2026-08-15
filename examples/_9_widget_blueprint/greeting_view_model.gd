@@ -11,8 +11,7 @@
 class_name GreetingViewModel
 extends ObservableObject
 
-const ObservableObject = preload("res://addons/gdvm/core/component_model/observable_object.gd")
-const WorldTimeService = preload("res://examples/_9_widget_blueprint/world_time_service.gd")
+const WorldTimeService = preload("./world_time_service.gd")
 
 ## The Model — source of world-time data. Not observable by the View; the
 ## ViewModel translates its results into observable state.

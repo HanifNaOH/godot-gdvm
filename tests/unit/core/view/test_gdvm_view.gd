@@ -1,7 +1,5 @@
 extends GutTest
 
-const ObservableObject = Gdvm.ObservableObject
-
 
 class Vm extends ObservableObject:
 	var greeting: String:
@@ -431,4 +429,5 @@ func test_converter_unknown_falls_back_to_identity() -> void:
 
 	# Unknown converter falls back to identity.
 	assert_eq(label.text, "Hello")
+	assert_push_warning("unknown converter")
 	autoqfree(view)

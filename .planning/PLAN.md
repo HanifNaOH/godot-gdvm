@@ -16,7 +16,11 @@
 
 ## Todo
 
-- [ ] Add unit test for `DataNodeStruct.remove_property` sibling-computed-output edge case
-- [ ] Clean stray whitespace in `observer/node.gd`
-- [ ] Consider replacing `assert`-only validation with `push_error` for release builds
-- [ ] Run GUT test suite to verify all fixes
+- [ ] Deprecate legacy layer: `utils.gd`, `core/data_node/`, `core/observer/`, `core/writer/`, `binder/`
+- [ ] Add `class_name ObservableObject` / `class_name ObservableRecipient`
+- [ ] Fix `res://` hardcode in `core/view/gdvm_view.gd` (use relative `../dependency_injection/service_locator.gd`)
+- [ ] Rewrite `gdvm.gd` facade to only preload the retained classes
+- [ ] Delete legacy examples `_1`–`_7` and legacy tests (`test_utils`, `data_node`, `observer`, `writer`, `binder`, `use_case/binder`)
+- [ ] Rewrite `README.md` to lead with `ObservableObject` + `GdvmView`
+- [ ] Decide `ObservableObject.set_property` emit-before-write semantics (document or invert)
+- [ ] Run GUT test suite to verify the retained layer passes

@@ -2,115 +2,129 @@
 
 [![Documentation Status](https://readthedocs.org/projects/godot-gdvm/badge/?version=latest)](https://godot-gdvm.readthedocs.io/zh-cn/latest/)
 [![GitHub License](https://img.shields.io/github/license/qt911025/godot-gdvm)](https://github.com/qt911025/godot-gdvm/blob/main/LICENSE)
-## 支持的版本
 
-|GDVM|Godot|
-|----|----|
-|~0.2|^4.4|
-|~0.3|^4.5|
+## Supported versions
 
-## 这是啥
+| GDVM | Godot |
+|------|-------|
+| ~0.3 | ^4.5 |
 
-一个 Godot 的插件
+## What is this
 
-一个单向数据绑定工具集，可实现MVVM/MVC
+A Godot plugin implementing an **Unreal-inspired MVVM** framework: an
+`ObservableObject` ViewModel paired with a declarative `GdvmView` that binds
+scene-node properties to ViewModel fields via `.tscn` metadata.
 
-Gdvm不是围绕Godot的UI设计的，它与UI完全无关，所以Godot的任何节点都可以用
+The Model-View-ViewModel triad:
 
-支持列表！
+- **Model** — plain data/services (`RefCounted`, `Resource`, `Node`). Knows nothing
+  about the View or ViewModel.
+- **ViewModel** — an `ObservableObject` that owns a reference to the Model and
+  exposes **view-ready** properties. It notifies the View of changes via the
+  `changed` signal (the Unreal `FieldNotify` equivalent).
+- **View** — a `.tscn` scene whose root carries a `GdvmView` script. Nodes declare
+  bindings via `metadata/_gdvm_binding`; the view holds zero business logic.
 
-惰性求值！
+## Quick start
 
-可扩展！
-
-**Gdvm现在还处于测试版，API尚未稳定，在1.0发布前的更新都是颠覆性的，慎用！**
-
-**1.0正式版将在Godot Asset Store正式版发布后发布在Godot Asset Store。届时旧的Godot Asset Library将不再更新。**
-
-## 上手
-
-创建一个空的场景，根节点是Node，并绑定如下脚本。
+Create a ViewModel:
 
 ```gdscript
-extends Node
+class_name GreetingViewModel
+extends ObservableObject
 
-const Utils = Gdvm.Utils
-const DataTree = Gdvm.DataTree
-const ObserverPackTree = Gdvm.ObserverPackTree
-const WriterPackTree = Gdvm.WriterPackTree
-
-const DataNode = Gdvm.DataNode
-const DataNodeInt = Gdvm.DataNodeInt
-
-class ObjWithInt:
-	signal changed
-	var data: int:
-		set(value):
-			if value != data:
-				# 防死循环设计
-				data = value
-				changed.emit()
-
-func _ready() -> void:
-	var obj := ObjWithInt.new()
-	var data_tree := DataTree.new(0)
-	var observer := ObserverPackTree.new({
-		"base": obj,
-		"options": ObserverPackTree.opts({
-			"path": ":data",
-			"changed": func(source: Object, _property_path: NodePath) -> Signal:
-				return (source as ObjWithInt).changed
-				})
-	})
-	data_tree.observe(observer)
-	var root := data_tree.get_root() as DataNodeInt
-	var _writer := WriterPackTree.new(root, {
-		"base": obj,
-		"options": WriterPackTree.opts({
-			"path": ":data"
-			})
-	})
-	prints("Initial data node value:", root.value()) # 0
-	prints("Initial target value:", obj.data) # 0
-	root.render(1)
-	prints("Root rendered node value:", root.value()) # 1
-	prints("Root rendered target value:", obj.data) # 1
-	obj.data = 2
-	prints("Target changed node value:", root.value()) # 2
-	prints("Target changed target value:", obj.data) # 2
+var greeting: String = "hello":
+	set(v):
+		if set_property(&"greeting", greeting, v):
+			greeting = v
 ```
 
-这个例子也在examples/_7_pure_script里可以看到
+Declare bindings in the scene, on each bound node:
 
-## 简单原理介绍
+```
+metadata/_gdvm_binding = {
+	"mode": "one_way",
+	"path": "greeting",
+	"prop": "text"
+}
+```
 
-### 基础组成要素
+Wire the ViewModel to the View in the code-behind:
 
-Gdvm针对Godot的数据类型，定义了一套DataNode。
+```gdscript
+extends Control
 
-DataNode通过结构化组织成树，并添加观察者（Observer）与写者（Writer）绑定，将改动从来源同步到DataNode，并同步到目标数据。
+@onready var gdvm_view: GdvmView = $GdvmView
 
-观察者与写者是原子化的，实例化的关系，都是RefCounted，并且关系不拥有对目标对象与DataNode的强引用。绑定的数据一旦消失，关系也自动失效。
+var view_model: GreetingViewModel
 
-同样地，观察者与写者都是RefCounted，解除关系也只需要抛弃关系实例即可。
+func _ready() -> void:
+	view_model = GreetingViewModel.new()
+	gdvm_view.set_view_model(view_model)
+```
 
-### 更复杂的组织
+See `examples/_9_widget_blueprint/` for the full pattern.
 
-每个基本的DataNode、观察者与写者组织监听关系，规模扩大会让代码十分臃肿。
+## Architecture
 
-Gdvm提供了更简洁的配置方式——Binder，通过将三类基础部件构建成三大集合，建立集合与集合之间的监听关系。
+```
+Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
+   "source data"       "translator, change-          "visual + binding metadata,
+                        notifying via changed"        no business logic"
+```
 
-|Core|Binder|
-|----|----|
-|DataNode|DataTree|
-|Observer|ObserverPack|
-|Writer|WriterPack|
+### Binding modes
 
+| Mode | Direction | Use |
+|------|-----------|-----|
+| `one_way` | ViewModel → node | labels, health bars |
+| `one_time` | set once at build | static data |
+| `one_way_to_source` | node → ViewModel | driven by a node `signal` |
+| `two_way` | ViewModel ↔ node | inputs, checkboxes, sliders |
 
-可以建立多重监听关系，让多个不同的DataTree观察同一个数据来源，同一个DataTree可以建立多个不同的写者，同步到多个不同的目标。
+Two-way and one-way-to-source bindings require a `signal` field naming the node
+signal that drives the node → ViewModel direction.
 
-## Gdvm的适用场景
+### ViewModel resolvers
 
-Gdvm将数据武装到牙齿，为每一个基础数据类型包装了一层复杂的结构，包括信号、缓存值等，会大大提高数据所占据的空间。
+`GdvmView` resolves its ViewModel via `view_model_resolver`:
 
-对数据量以及效率要求不大时，DataNode本身可以作为数据模型用。而数据量有一定规模后，应该自行定义数据结构与读写锁，只在表现层构建Gdvm来观察它。
+| Resolver | Behavior |
+|----------|----------|
+| `manual` | caller provides VM via `set_view_model` |
+| `create_instance` | View instantiates `view_model_class` |
+| `global` | resolve from `ServiceLocator` via `view_model_key` |
+| `context` | walk up the parent hierarchy for an ancestor's VM |
+
+### Converters
+
+Three tiers, applied when writing a value to a node:
+
+1. **Built-in** — `str`, `bool_flip`, `percent`, `lowercase`, `uppercase`, `identity`.
+2. **Global** — `GdvmView.register_converter(name, callable)`.
+3. **Implicit** — identity fallback when no converter is named.
+
+## MVVM Toolkit (CommunityToolkit-style)
+
+GDVM also ships the companion abstractions documented in
+[`MVVM_TOOLKIT.md`](MVVM_TOOLKIT.md):
+
+- `RelayCommand` / `AsyncRelayCommand` — commands (Unreal: ICommand).
+- `Messenger` / `RequestMessage` — decoupled pub/sub and request/response.
+- `ServiceLocator` — IoC service resolution (Unreal: MVVMSubsystem).
+- `ObservableRecipient` — `ObservableObject` + automatic `Messenger` lifecycle.
+
+## Important: `set_property` emit-before-write contract
+
+`ObservableObject.set_property` emits `changed` **before** the setter writes the
+value. Listeners must use the signal's `new_value` argument (authoritative) and
+must **not** re-read the property inside a `changed` handler (they would see the
+stale value).
+
+## Usage notes
+
+**Gdvm is still in beta.** APIs are not yet stable; updates before 1.0 are
+breaking. Use with care.
+
+The previous DataNode/Observer/Writer/Binder data-binding layer has been
+**removed** in favor of the Unreal-ish `ObservableObject` + `GdvmView` stack.

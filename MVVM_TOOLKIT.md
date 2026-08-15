@@ -34,7 +34,9 @@ A base class for objects that need to support property change notifications. It 
 ```gdscript
 class PlayerModel extends ObservableObject:
 	var health: int:
-		set(v): set_property(&"health", health, v)
+		set(v):
+			if set_property(&"health", health, v):
+				health = v
 ```
 
 ### `ObservableRecipient`

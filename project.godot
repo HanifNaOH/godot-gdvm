@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Godot GDVM"
-run/main_scene="uid://dn6u05ccklfqu"
+run/main_scene="uid://clmm54qkt3hbw"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="uid://j58v7buw6xm1"
 

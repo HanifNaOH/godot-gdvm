@@ -2,6 +2,7 @@
 
 **Type:** Reference / Gap analysis (not an implementation plan)
 **Created:** 2026-08-14
+**Updated:** 2026-08-15 — re-anchored to the Unreal-ish MVVM layer (legacy DataNode/Observer/Writer deprecated)
 **Status:** Open for discussion
 
 ---
@@ -19,45 +20,45 @@ implementation, and identifies where GDVM has an equivalent, a partial equivalen
 
 ## 1. Core architecture
 
-| Unreal MVVM | GDVM | Status |
-|-------------|------|--------|
-| **Model** — C++ classes, Data Tables, Actor variables | `core/data_node/*` (Variant/Struct/List/Dict/Node/Strict) + `ObservableObject` | ✅ equivalent |
-| **ViewModel** — `UMVVMViewModelBase` (`UObject`) | `core/component_model/observable_object.gd` / `observable_recipient.gd` | ✅ equivalent |
-| **View** — Widget Blueprint | (GDVM leaves View to the scene tree; binding via Observer/Writer) | ⚠️ different shape |
+| Unreal MVVM | GDVM (Unreal-ish) | Status |
+|-------------|-------------------|--------|
+| **Model** — C++ classes, Data Tables, Actor variables | plain `RefCounted` / `Resource` / `Node` (no GDVM base class) | ✅ equivalent |
+| **ViewModel** — `UMVVMViewModelBase` (`UObject`) | `ObservableObject` / `ObservableRecipient` | ✅ equivalent |
+| **View** — Widget Blueprint | `.tscn` scene + `GdvmView` (metadata-driven binding) | ✅ equivalent |
 
 ## 2. FieldNotify system (replaces Tick/polling)
 
 | Unreal MVVM | GDVM | Status |
 |-------------|------|--------|
-| `FieldNotify` specifier / "Bell" icon on variables | `changed` signal convention (`ObservableObject.set_property`, `DataNode.changed`) | ✅ equivalent (event-driven) |
-| `BlueprintPure` FieldNotify functions (e.g. `GetHealthPercent()`) | `DataNodeStruct` computed properties (`add_computed_properties`) | ✅ equivalent |
-| `UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED(Name)` manual broadcast | `DataNode.mark_changed()` / `notify_can_execute_changed()` | ✅ equivalent |
+| `FieldNotify` specifier / "Bell" icon on variables | `changed` signal via `ObservableObject.set_property` | ✅ equivalent (event-driven) |
+| `BlueprintPure` FieldNotify functions (e.g. `GetHealthPercent()`) | getter-only derived properties + `notify_property_changed` | ✅ equivalent |
+| `UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED(Name)` manual broadcast | `ObservableObject.notify_property_changed(name)` | ✅ equivalent |
 
 ## 3. Binding modes
 
 | Unreal MVVM | GDVM | Status |
 |-------------|------|--------|
-| **One Way** (Source → Dest) | `Observer` (source → DataNode) | ✅ equivalent |
-| **Two Way** (Source ↔ Dest) | `Observer` + `Writer` together | ✅ equivalent |
-| **One Way to Source** (Dest → Source) | `Writer` (DataNode → source) | ✅ equivalent |
-| **One Time** (set once, never re-checked) | none | ❌ **gap** (no "one-time" binding mode) |
+| **One Way** (Source → Dest) | `mode: "one_way"` | ✅ |
+| **Two Way** (Source ↔ Dest) | `mode: "two_way"` + `signal` (loop-guarded) | ✅ |
+| **One Way to Source** (Dest → Source) | `mode: "one_way_to_source"` + `signal` | ✅ |
+| **One Time** (set once, never re-checked) | `mode: "one_time"` | ✅ |
 
 ## 4. ViewModel resolution / discovery
 
 | Unreal MVVM | GDVM | Status |
 |-------------|------|--------|
-| **Create Instance** (widget makes its own VM) | manual instantiation | ⚠️ equivalent (manual) |
-| **Manual** (`SetViewModel`) | manual wiring in `ObserverPack` / `WriterPack` | ✅ equivalent |
-| **Global VM collection** (`MVVMSubsystem` singleton) | `core/dependency_injection/service_locator.gd` | ✅ equivalent |
-| **Context Resolver** (search parent hierarchy, UE 5.6+) | none | ❌ **gap** (no parent-hierarchy VM discovery) |
+| **Create Instance** (widget makes its own VM) | `view_model_resolver = "create_instance"` | ✅ |
+| **Manual** (`SetViewModel`) | `set_view_model(vm)` | ✅ |
+| **Global VM collection** (`MVVMSubsystem` singleton) | `ServiceLocator` + `view_model_resolver = "global"` | ✅ |
+| **Context Resolver** (search parent hierarchy) | `view_model_resolver = "context"` | ✅ |
 
 ## 5. Conversion functions
 
 | Unreal MVVM | GDVM | Status |
 |-------------|------|--------|
-| Simple converters (bool flip, number→text) | strict nodes' coercion (e.g. `strict/string.gd` `str()`) | ⚠️ partial (coercion, not display conversion) |
-| Global conversion libraries (`UMVVMConversionLibraries`) | none | ❌ **gap** (no reusable conversion library) |
-| Implicit converters (UE 5.8+) | strict-node coercions | ⚠️ partial |
+| Simple converters (bool flip, number→text) | built-ins (`str`, `bool_flip`, `percent`, `lowercase`, `uppercase`) | ✅ |
+| Global conversion libraries (`UMVVMConversionLibraries`) | `GdvmView.register_converter(name, callable)` | ✅ |
+| Implicit converters (UE 5.8+) | identity fallback when no converter is named | ⚠️ partial (no auto-coercion) |
 
 ## 6. C++ macros / setter control
 
@@ -70,8 +71,8 @@ implementation, and identifies where GDVM has an equivalent, a partial equivalen
 
 | Unreal MVVM | GDVM | Status |
 |-------------|------|--------|
-| Bind a `TArray` to a `ListView`/`TileView`; auto-create/destroy child widgets | `core/observer/node.gd` + `core/writer/node.gd` with `DataNodeList` | ✅ equivalent |
-| `OnItemsChanged` delegate for custom animation | `DataNodeList.order_changed` / `changed` signals | ✅ equivalent |
+| Bind a `TArray` to a `ListView`/`TileView`; auto-create/destroy child widgets | `GdvmView` list binding (`template` + `item_prop`) | ✅ equivalent |
+| `OnItemsChanged` delegate for custom animation | `GdvmView.items_changed` signal | ✅ equivalent |
 
 ## 8. Performance & best practices
 
@@ -79,23 +80,26 @@ implementation, and identifies where GDVM has an equivalent, a partial equivalen
 |-------------|------|--------|
 | Event-driven (no polling) | `changed` signal convention | ✅ equivalent |
 | ViewModel testable in isolation | GUT unit tests exist (`tests/unit/core/*`) | ✅ equivalent |
-| Avoid hard references (GC / memory) | `WeakRef` used in Observer/Writer/Messenger | ✅ equivalent |
+| Avoid hard references (GC / memory) | `WeakRef` used in `Messenger` | ✅ equivalent |
 
 ---
 
 ## Gap summary
 
-Three features exist in Unreal MVVM but have **no GDVM equivalent**:
+Remaining gaps after the Unreal-ish rewrite:
 
-1. **One-Time binding mode** — set once at construction, never re-checked (perf for static data).
-2. **Context Resolver** — a widget searches its parent hierarchy to find a ViewModel (UE 5.6+).
-3. **Global conversion libraries** — reusable, user-defined value converters (beyond primitive coercion).
+1. **Editor plugin** — no inspector UI to author `_gdvm_binding` metadata (Phase 7, not implemented).
+2. **Implicit converters** — only identity fallback; no automatic type coercion (UE 5.8-style).
+3. **Per-item ViewModel resolution in lists** — list bindings reconcile a `template` scene per
+   element but do not resolve a per-item context/ViewModel.
+4. **`AsyncRelayCommand` awaitable coverage** — completion detection relies on a returned
+   `Signal`; coroutine/`await` return values are not handled.
 
 ---
 
 ## Notes / open questions
 
-- GDVM's type system (`utils.gd` 4-form notation, strict nodes) has no Unreal analogue because
-  GDScript lacks C++ property reflection; the comparison above treats GDVM's coercion as its
-  "conversion" story.
-- Whether the three gaps are worth addressing is deliberately **out of scope** for this ticket.
+- The legacy `utils.gd` type system and DataNode strict nodes are **deprecated**; they have no
+  role in the Unreal-ish layer and are scheduled for removal.
+- Whether the remaining gaps (editor plugin, implicit converters, per-item VM resolution) are
+  worth addressing is tracked in [`plan_widget_blueprint_view.md`](./plan_widget_blueprint_view.md).

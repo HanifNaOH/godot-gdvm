@@ -1,23 +1,23 @@
-# Plan: Widget-Blueprint-Style View Layer (Unreal-inspired)
+# Plan: Unreal-ish MVVM (the sole retained architecture)
 
-**Status:** Design / plan only — no implementation yet
+**Status:** Core implemented (Phases 0–6 done); legacy DataNode/Observer/Writer/Binder deprecated
 **Created:** 2026-08-14
-**Updated:** 2026-08-14 (locked decisions)
+**Updated:** 2026-08-15 (re-scoped: delete legacy layer, keep Unreal-ish MVVM)
 **Related:** [`mvvm_comparison_unreal.md`](./mvvm_comparison_unreal.md)
 
 ---
 
 ## 1. Goal
 
-Give GDVM a **first-class, declarative "View"** modeled on Unreal Engine's Widget Blueprint
-(WBP) MVVM system, while keeping the existing core intact.
+Make the **Unreal-ish MVVM stack** the single supported architecture: `ObservableObject`
+ViewModel + `GdvmView` declarative binding, with a code-behind script for view logic — the
+Widget Blueprint (WBP) model adapted to Godot.
 
-Today GDVM is "completely UI-agnostic": there is no View class. A "View" is whatever scene
-tree you point `ObserverPackTree`/`WriterPackTree` at, and binding is declared **in code**
-(opts dicts / manual lambdas), not in the `.tscn`. The scene files carry no binding metadata.
-
-We want: **the scene asset itself to declare both the look AND the binding**, with a code-behind
-script for view logic — the WBP model adapted to Godot.
+The legacy **DataNode / Observer / Writer / Binder** layer is deprecated and will be removed:
+it was the "UI-agnostic" imperative binding system (`ObserverPackTree`/`WriterPackTree` opts
+dicts, manual lambdas). That layer carries no binding metadata in the scene; the new `GdvmView`
+moves binding **into the `.tscn`** as node metadata, matching WBP's "asset declares look AND
+binding".
 
 ## 2. Locked decisions
 
@@ -27,7 +27,7 @@ These are final; everything below follows from them.
 |---|----------|-----------|
 | D1 | `GdvmView` **extends `Node`**, not `Control` | UI-agnostic; the binder only needs `Node` API (`get_node`, `get_children`, `child_order_changed`, `add_child`, `set_indexed`). Works for `Control`/`Node2D`/`Node3D` roots. |
 | D2 | **Default ViewModel = `ObservableObject`** | Simpler to author (plain class + setters), pairs with the existing toolkit, and avoids the DataNode/strict machinery on the view side. |
-| D3 | `DataTree` remains a **secondary** VM shape | Already exists; supported but not the default. |
+| D3 | `DataTree` is **deprecated** (legacy) | Replaced by `ObservableObject` + `GdvmView`; removed from the public surface. |
 | D4 | Binding is **metadata on scene nodes** (`_gdvm_binding`) | Data lives in the `.tscn`; logic lives in the `GdvmView` code-behind. |
 | D5 | Build **smallest vertical slice first** | Prove the loop (metadata → `one_way` bind → demo) before expanding. |
 
@@ -163,12 +163,13 @@ Three tiers (all in code-behind / a conversion library, since metadata can't hol
    `ItemTypeToIcon`) analogous to `UMVVMConversionLibraries`.
 3. **Implicit** — default fallback on type mismatch (UE 5.8-style), overridable per view.
 
-## 11. What we keep vs. add
+## 11. What we keep vs. remove
 
-- **Keep (untouched):** `DataNode` tree, `Observer`/`Writer` core, `DataTree`, and the MVVM
-  toolkit (`ObservableObject`, `RelayCommand`, `Messenger`, `ServiceLocator`).
-- **Add:** `GdvmView` base + metadata-driven auto-binding + `notify_property_changed`.
-- **This is a layer on top, not a rewrite.** Old imperative code still works.
+- **Keep:** the MVVM toolkit (`ObservableObject`, `ObservableRecipient`, `RelayCommand`,
+  `AsyncRelayCommand`, `Messenger`, `RequestMessage`, `ServiceLocator`) + `GdvmView`.
+- **Remove (deprecate → delete):** `DataNode` tree (incl. `strict/`), `Observer`/`Writer` core,
+  `DataTree`/`ObserverPack`/`WriterPack` binder, and `utils.gd`.
+- **This is a rewrite toward Unreal-ish MVVM only.** The legacy imperative API is not kept.
 
 ## 12. Phased implementation
 
@@ -185,9 +186,11 @@ Built as a minimal vertical slice first, then expanded outward.
 | **6** | conversion system (built-ins → global lib → implicit) | type-mismatch handling |
 | **7** | `EditorPlugin` to author metadata in inspector | "Binding tab" DX |
 
-**Recommended scope for the next version:** Phase 0–3 (helper + `one_way`/`one_way_to_source`/
-`two_way` + stable `set_view_model`). Defer one-time, lists, resolvers, converters, and the
-editor plugin.
+**Implementation status:** Phases 0–6 are **implemented** in `core/view/gdvm_view.gd` (with
+tests in `tests/unit/core/view/`). Phase 7 (editor plugin) is the only remaining item.
+
+**Recommended scope for the next version:** Phase 7 (editor plugin) plus the deprecation/removal
+of the legacy layer (see §11).
 
 ## 13. Unreal feature coverage
 
@@ -204,6 +207,8 @@ editor plugin.
 
 ## 14. Open questions (remaining)
 
-- Per-node metadata vs. a centralized "view descriptor" on the root? (default: per-node)
-- Exact `ObservableObject` property-name → node-property addressing for nested objects.
-- Final loop-guard mechanism (source-tagging vs. re-entry flag) — to be decided in Phase 2.
+- Editor plugin UX for authoring `_gdvm_binding` metadata (Phase 7).
+- Per-item ViewModel/context resolution for list bindings.
+- `AsyncRelayCommand` coverage for non-`Signal` awaitables.
+- Removal sequencing for the legacy layer (`utils.gd`, `core/data_node`, `core/observer`,
+  `core/writer`, `binder/`) and its tests/examples (`_1`–`_7`).

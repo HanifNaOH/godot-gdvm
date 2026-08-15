@@ -1,7 +1,5 @@
 extends GutTest
 
-const ObservableObject = Gdvm.ObservableObject
-
 
 ## A minimal observable model that follows the documented setter convention.
 class Model extends ObservableObject:

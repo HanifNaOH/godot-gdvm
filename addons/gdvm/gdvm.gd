@@ -1,75 +1,27 @@
 class_name Gdvm
 
-const Utils = preload("./utils.gd")
+## GDVM — Unreal-ish MVVM facade.
+##
+## Aggregates the retained (Unreal-inspired) MVVM toolkit into a single global
+## access point so consumers write `Gdvm.ObservableObject` instead of hand-written
+## `preload` paths.
+##
+## The legacy DataNode / Observer / Writer / Binder layer has been removed.
 
-const DataNode = preload("./core/data_node/base.gd")
-const DataNodeVariant = preload("./core/data_node/variant.gd")
-const DataNodeStruct = preload("./core/data_node/struct.gd")
-const DataNodeList = preload("./core/data_node/list.gd")
-const DataNodeDict = preload("./core/data_node/dict.gd")
-const DataNodeNode = preload("./core/data_node/node.gd")
-
-const DataNodeStrict = preload("./core/data_node/strict/base.gd")
-const DataNodeBool = preload("./core/data_node/strict/bool.gd")
-const DataNodeInt = preload("./core/data_node/strict/int.gd")
-const DataNodeFloat = preload("./core/data_node/strict/float.gd")
-const DataNodeString = preload("./core/data_node/strict/string.gd")
-const DataNodeVector2 = preload("./core/data_node/strict/vector2.gd")
-const DataNodeVector2i = preload("./core/data_node/strict/vector2i.gd")
-const DataNodeRect2 = preload("./core/data_node/strict/rect2.gd")
-const DataNodeRect2i = preload("./core/data_node/strict/rect2i.gd")
-const DataNodeVector3 = preload("./core/data_node/strict/vector3.gd")
-const DataNodeVector3i = preload("./core/data_node/strict/vector3i.gd")
-const DataNodeTransform2D = preload("./core/data_node/strict/transform2d.gd")
-const DataNodeVector4 = preload("./core/data_node/strict/vector4.gd")
-const DataNodeVector4i = preload("./core/data_node/strict/vector4i.gd")
-const DataNodePlane = preload("./core/data_node/strict/plane.gd")
-const DataNodeQuaternion = preload("./core/data_node/strict/quaternion.gd")
-const DataNodeAABB = preload("./core/data_node/strict/aabb.gd")
-const DataNodeBasis = preload("./core/data_node/strict/basis.gd")
-const DataNodeTransform3D = preload("./core/data_node/strict/transform3d.gd")
-const DataNodeProjection = preload("./core/data_node/strict/projection.gd")
-const DataNodeColor = preload("./core/data_node/strict/color.gd")
-const DataNodeStringName = preload("./core/data_node/strict/string_name.gd")
-const DataNodeNodePath = preload("./core/data_node/strict/node_path.gd")
-const DataNodeRID = preload("./core/data_node/strict/rid.gd")
-
-const FactoryOfDataNode = preload("./core/data_node/factory.gd")
-
-const Writer = preload("./core/writer/base.gd")
-const WriterProperty = preload("./core/writer/property.gd")
-const WriterPropertyArray = preload("./core/writer/property_array.gd")
-const WriterPropertyDictionary = preload("./core/writer/property_dictionary.gd")
-const WriterNode = preload("./core/writer/node.gd")
-
-const Observer = preload("./core/observer/base.gd")
-const ObserverProperty = preload("./core/observer/property.gd")
-const ObserverPropertyArray = preload("./core/observer/property_array.gd")
-const ObserverPropertyDictionary = preload("./core/observer/property_dictionary.gd")
-const ObserverNode = preload("./core/observer/node.gd")
-
-# binder
-const DataTreeOptions = preload("./binder/data_tree/options.gd")
-const DataTreeTemplate = preload("./binder/data_tree/template.gd")
-const DataTree = preload("./binder/data_tree/tree.gd")
-
-const ObserverPack = preload("./binder/observer_pack/base.gd")
-const ObserverPackTree = preload("./binder/observer_pack/tree/base.gd")
-
-const WriterPack = preload("./binder/writer_pack/base.gd")
-const WriterPackTree = preload("./binder/writer_pack/tree/base.gd")
-
-# MVVM Toolkit integration — equivalent to CommunityToolkit.Mvvm
+# Component model — the ViewModel backbone (Unreal: UMVVMViewModelBase)
 const ObservableObject = preload("./core/component_model/observable_object.gd")
 const ObservableRecipient = preload("./core/component_model/observable_recipient.gd")
 
+# Input — commands (Unreal: ICommand / command bindings)
 const RelayCommand = preload("./core/input/relay_command.gd")
 const AsyncRelayCommand = preload("./core/input/async_relay_command.gd")
 
+# Messaging — decoupled publisher/subscriber + request/response
 const Messenger = preload("./core/messaging/messenger.gd")
 const RequestMessage = preload("./core/messaging/request_message.gd")
 
+# Dependency injection — service resolution (Unreal: MVVMSubsystem)
 const ServiceLocator = preload("./core/dependency_injection/service_locator.gd")
 
-# View layer — Widget-Blueprint-style declarative binding
+# View — Widget-Blueprint-style declarative binding
 const GdvmView = preload("./core/view/gdvm_view.gd")
