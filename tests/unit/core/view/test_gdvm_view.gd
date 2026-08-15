@@ -46,7 +46,7 @@ func test_one_way_initial_push() -> void:
 	vm.greeting = "Hello"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -61,7 +61,7 @@ func test_one_way_updates_on_change() -> void:
 	vm.greeting = "Hello"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -78,7 +78,7 @@ func test_one_way_ignores_unrelated_change() -> void:
 	vm.greeting = "Hello"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -96,7 +96,7 @@ func test_nested_node_binding() -> void:
 
 	var panel := Panel.new()
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
 	panel.add_child(label)
 
 	var view := GdvmView.new()
@@ -114,7 +114,7 @@ func test_set_view_model_rebuilds_bindings() -> void:
 	vm2.greeting = "Two"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -139,7 +139,7 @@ func test_one_way_to_source_writes_to_vm() -> void:
 
 	var edit := LineEdit.new()
 	edit.text = "User Typed"
-	edit.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way_to_source", "signal": "text_changed"})
+	edit.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 2, "signal": "text_changed"})
 
 	var view := GdvmView.new()
 	view.add_child(edit)
@@ -161,7 +161,7 @@ func test_two_way_vm_to_node_and_back() -> void:
 	vm.checked = false
 
 	var box := CheckBox.new()
-	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": "two_way", "signal": "toggled"})
+	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": 3, "signal": "toggled"})
 
 	var view := GdvmView.new()
 	view.add_child(box)
@@ -190,7 +190,7 @@ func test_two_way_no_echo_loop() -> void:
 	vm.checked = false
 
 	var box := CheckBox.new()
-	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": "two_way", "signal": "toggled"})
+	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": 3, "signal": "toggled"})
 
 	var view := GdvmView.new()
 	view.add_child(box)
@@ -215,7 +215,7 @@ func test_one_time_sets_once_and_ignores_changes() -> void:
 	vm.greeting = "Initial"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_time"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 1})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -363,7 +363,7 @@ func test_converter_builtin_str() -> void:
 	vm.number = 42
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "number", "prop": "text", "mode": "one_way", "converter": "str"})
+	label.set_meta(&"_gdvm_binding", {"path": "number", "prop": "text", "mode": 0, "converter": "str"})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -381,11 +381,11 @@ func test_converter_builtin_bool_flip() -> void:
 	vm.checked = false
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "text", "mode": "one_way", "converter": "str"})
+	label.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "text", "mode": 0, "converter": "str"})
 
 	# str(false) == "False" in Godot; verify via bool_flip on a visibility use case.
 	var box := CheckBox.new()
-	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": "one_way", "converter": "bool_flip"})
+	box.set_meta(&"_gdvm_binding", {"path": "checked", "prop": "button_pressed", "mode": 0, "converter": "bool_flip"})
 
 	var view := GdvmView.new()
 	view.add_child(box)
@@ -406,7 +406,7 @@ func test_converter_global_registry() -> void:
 	vm.number = 21
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "number", "prop": "text", "mode": "one_way", "converter": "double_str"})
+	label.set_meta(&"_gdvm_binding", {"path": "number", "prop": "text", "mode": 0, "converter": "double_str"})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -421,7 +421,7 @@ func test_converter_unknown_falls_back_to_identity() -> void:
 	vm.greeting = "Hello"
 
 	var label := Label.new()
-	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": "one_way", "converter": "does_not_exist"})
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0, "converter": "does_not_exist"})
 
 	var view := GdvmView.new()
 	view.add_child(label)
@@ -430,4 +430,134 @@ func test_converter_unknown_falls_back_to_identity() -> void:
 	# Unknown converter falls back to identity.
 	assert_eq(label.text, "Hello")
 	assert_push_warning("unknown converter")
+	autoqfree(view)
+
+
+# ─── Code-first bind() API ──────────────────────────────────────────────────
+
+func test_bind_code_first_one_way() -> void:
+	var vm := Vm.new()
+	vm.greeting = "CodeFirst"
+
+	var label := Label.new()
+	var view := GdvmView.new()
+	view.add_child(label)
+	view.set_view_model(vm)
+
+	# bind() (no mode -> default ONE_WAY) pushes the value immediately.
+	view.bind(label, "greeting", "text")
+	assert_eq(label.text, "CodeFirst")
+
+	vm.greeting = "Updated"
+	assert_eq(label.text, "Updated")
+	autoqfree(view)
+
+
+func test_bind_code_first_two_way_echo_guarded() -> void:
+	var vm := BoolVm.new()
+	vm.checked = false
+
+	var box := CheckBox.new()
+	var view := GdvmView.new()
+	view.add_child(box)
+	view.set_view_model(vm)
+
+	view.bind(box, "checked", "button_pressed", {"mode": GdvmView.Mode.TWO_WAY, "signal": &"toggled"})
+	assert_eq(box.button_pressed, false)
+
+	# VM -> node
+	vm.checked = true
+	assert_eq(box.button_pressed, true)
+
+	# node -> VM (simulate user toggle)
+	box.button_pressed = false
+	box.toggled.emit(false)
+	assert_eq(vm.checked, false)
+	autoqfree(view)
+
+
+func test_bind_on_changed_replaces_snap() -> void:
+	var vm := IntVm.new()
+	vm.number = 1
+
+	var label := Label.new()
+	var view := GdvmView.new()
+	view.add_child(label)
+	view.set_view_model(vm)
+
+	var calls: Array = []
+	view.bind(label, "number", "text", {
+		"on_changed": func(node: Node, new_value, _old): calls.append([node, new_value]),
+	})
+
+	# on_changed replaces the default write, so the label is NOT auto-set.
+	assert_eq(label.text, "")
+	assert_eq(calls.size(), 1)  # initial push fired the hook
+
+	vm.number = 5
+	assert_eq(calls.size(), 2)
+	assert_eq(calls[1], [label, 5])
+	autoqfree(view)
+
+
+func test_bind_list_code_first_populates_and_reconciles() -> void:
+	var vm := ListVm.new()
+	vm.items = ["A", "B"]
+
+	var container := VBoxContainer.new()
+	var view := GdvmView.new()
+	view.add_child(container)
+	view.set_view_model(vm)
+
+	view.bind_list(container, "items", _make_label_scene(), {"item_prop": "text"})
+	assert_eq(container.get_child_count(), 2)
+
+	vm.items = ["A", "B", "C"]
+	assert_eq(container.get_child_count(), 3)
+	assert_eq((container.get_child(2) as Label).text, "C")
+
+	vm.items = ["A"]
+	assert_eq(container.get_child_count(), 1)
+	autoqfree(view)
+
+
+func test_bind_list_on_added_hook() -> void:
+	var vm := ListVm.new()
+	vm.items = []
+
+	var container := VBoxContainer.new()
+	var view := GdvmView.new()
+	view.add_child(container)
+	view.set_view_model(vm)
+
+	var added: Array = []
+	view.bind_list(container, "items", _make_label_scene(), {"item_prop": "text", "on_added": func(item: Node): added.append(item)})
+
+	vm.items = ["X"]
+	assert_eq(added.size(), 1)
+	assert_eq(added[0], container.get_child(0))
+	autoqfree(view)
+
+
+func test_bind_list_on_removed_hook_owns_free() -> void:
+	var vm := ListVm.new()
+	vm.items = ["A", "B"]
+
+	var container := VBoxContainer.new()
+	var view := GdvmView.new()
+	view.add_child(container)
+	view.set_view_model(vm)
+
+	var removed: Array = []
+	view.bind_list(container, "items", _make_label_scene(), {
+		"item_prop": "text",
+		"on_removed": func(item: Node):
+			removed.append(item)
+			item.free()  # on_removed owns freeing the row
+	})
+
+	vm.items = ["A"]
+	assert_eq(removed.size(), 1)
+	assert_eq(container.get_child_count(), 1)
+	# The removed row was freed by the hook; remaining row + container freed by autoqfree.
 	autoqfree(view)

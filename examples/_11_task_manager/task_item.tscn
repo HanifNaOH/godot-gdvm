@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://c1h8t3gdp0n12"]
+
+[ext_resource type="Script" uid="uid://b31vy5sbmqog1" path="res://examples/_11_task_manager/task_item_view.gd" id="1_view"]
+[ext_resource type="Script" uid="uid://cu27mdm3hdnmb" path="res://examples/_11_task_manager/line_edit.gd" id="2_edit"]
+
+[node name="TaskItem" type="VBoxContainer" unique_id=450809823]
+custom_minimum_size = Vector2(0, 36)
+offset_right = 1136.0
+offset_bottom = 36.0
+size_flags_horizontal = 3
+script = ExtResource("1_view")
+
+[node name="NormalMode" type="PanelContainer" parent="." unique_id=1222932939]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HBox" type="HBoxContainer" parent="NormalMode" unique_id=1614826846]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Done" type="CheckBox" parent="NormalMode/HBox" unique_id=1595968088]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="NormalMode/HBox" unique_id=1560015570]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="RichTextLabel" parent="NormalMode/HBox/Content" unique_id=901103568]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Meta" type="Label" parent="NormalMode/HBox/Content" unique_id=1115750273]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
+
+[node name="Remove" type="Button" parent="NormalMode/HBox" unique_id=1893374717]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+mouse_filter = 2
+text = "✕"
+
+[node name="EditMode" type="PanelContainer" parent="." unique_id=802233991]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="EditBox" type="VBoxContainer" parent="EditMode" unique_id=1938389910]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TitleEdit" type="LineEdit" parent="EditMode/EditBox" unique_id=1312299373]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_edit")
+
+[node name="EditRow" type="HBoxContainer" parent="EditMode/EditBox" unique_id=118786142]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PriorityLabel" type="Label" parent="EditMode/EditBox/EditRow" unique_id=1821714567]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Priority:"
+
+[node name="Priority" type="OptionButton" parent="EditMode/EditBox/EditRow" unique_id=965404572]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 4
+popup/item_0/id = 0
+popup/item_1/id = 1
+popup/item_2/id = 2
+popup/item_3/id = 3
+
+[node name="DueLabel" type="Label" parent="EditMode/EditBox/EditRow" unique_id=100893263]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Due:"
+
+[node name="Due" type="SpinBox" parent="EditMode/EditBox/EditRow" unique_id=56427805]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 9999.0
+allow_greater = true

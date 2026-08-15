@@ -1,0 +1,110 @@
+[gd_scene format=3 uid="uid://dcd302pdy3ppn"]
+
+[ext_resource type="Script" uid="uid://dcemdupmtrrol" path="res://examples/_10_todo_mvvm/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://bgraomfuf3mly" path="res://addons/gdvm/core/view/gdvm_view.gd" id="2_gdvm"]
+
+[node name="Main" type="Control" unique_id=733722592]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="GdvmView" type="Node" parent="." unique_id=1599927589]
+script = ExtResource("2_gdvm")
+
+[node name="Panel" type="Panel" parent="." unique_id=1759101782]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Container" type="VBoxContainer" parent="Panel" unique_id=182496296]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 66.0
+offset_top = 60.0
+offset_right = -69.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Panel/Container" unique_id=950603977]
+layout_mode = 2
+
+[node name="SelectAll" type="CheckBox" parent="Panel/Container/Header" unique_id=266373629]
+unique_name_in_owner = true
+layout_mode = 2
+metadata/_gdvm_binding = {
+"mode": 3,
+"path": "all_checked",
+"prop": "button_pressed",
+"signal": "toggled"
+}
+
+[node name="NewItem" type="LineEdit" parent="Panel/Container/Header" unique_id=1847034289]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "What needs to be done?"
+
+[node name="Todos" type="VBoxContainer" parent="Panel/Container" unique_id=1065263519]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_gdvm_binding = {
+"mode": 0,
+"path": "items",
+"prop": "items",
+"template": "res://examples/_10_todo_mvvm/item.tscn"
+}
+
+[node name="Footer" type="HBoxContainer" parent="Panel/Container" unique_id=325943829]
+unique_name_in_owner = true
+layout_mode = 2
+metadata/_gdvm_binding = {
+"mode": 0,
+"path": "has_items",
+"prop": "visible"
+}
+
+[node name="ItemsLeft" type="Label" parent="Panel/Container/Footer" unique_id=1239719875]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+metadata/_gdvm_binding = {
+"mode": 0,
+"path": "items_left_text",
+"prop": "text"
+}
+
+[node name="Filter" type="HBoxContainer" parent="Panel/Container/Footer" unique_id=1637434155]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="All" type="Button" parent="Panel/Container/Footer/Filter" unique_id=385895496]
+unique_name_in_owner = true
+layout_mode = 2
+text = "All"
+
+[node name="Active" type="Button" parent="Panel/Container/Footer/Filter" unique_id=136063120]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Active"
+
+[node name="Completed" type="Button" parent="Panel/Container/Footer/Filter" unique_id=1018728219]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Completed"
+
+[node name="ClearCompleted" type="Button" parent="Panel/Container/Footer" unique_id=1125166073]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear completed"

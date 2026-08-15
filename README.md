@@ -44,7 +44,7 @@ Declare bindings in the scene, on each bound node:
 
 ```
 metadata/_gdvm_binding = {
-	"mode": "one_way",
+	"mode": 0,   # GdvmView.Mode enum int: 0=one_way, 1=one_time, 2=one_way_to_source, 3=two_way
 	"path": "greeting",
 	"prop": "text"
 }
@@ -76,15 +76,16 @@ Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
 
 ### Binding modes
 
-| Mode | Direction | Use |
-|------|-----------|-----|
-| `one_way` | ViewModel → node | labels, health bars |
-| `one_time` | set once at build | static data |
-| `one_way_to_source` | node → ViewModel | driven by a node `signal` |
-| `two_way` | ViewModel ↔ node | inputs, checkboxes, sliders |
+| Mode (enum) | Metadata int | Direction | Use |
+|------|------|-----------|-----|
+| `Mode.ONE_WAY` | `0` | ViewModel → node | labels, health bars |
+| `Mode.ONE_TIME` | `1` | set once at build | static data |
+| `Mode.ONE_WAY_TO_SOURCE` | `2` | node → ViewModel | driven by a node `signal` |
+| `Mode.TWO_WAY` | `3` | ViewModel ↔ node | inputs, checkboxes, sliders |
 
-Two-way and one-way-to-source bindings require a `signal` field naming the node
-signal that drives the node → ViewModel direction.
+In the code-first API use the `GdvmView.Mode` enum; in scene metadata store the
+integer shown above. Two-way and one-way-to-source bindings require a `signal`
+field naming the node signal that drives the node → ViewModel direction.
 
 ### ViewModel resolvers
 
