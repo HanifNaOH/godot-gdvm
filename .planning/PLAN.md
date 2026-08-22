@@ -48,8 +48,8 @@ The binding system is not production-ready until all of these are true:
 - Removing or freeing a bound node does not produce errors or stale callbacks.
 - Invalid paths, properties, signals, converters, and templates produce useful
   diagnostics that identify the node and binding.
-- Metadata uses one stable, readable representation for binding modes.
-- Every supported binding mode has tests using serialized scene metadata.
+- Code-first binding options use one stable, readable representation for modes.
+- Every supported binding mode has focused code-first tests.
 - A headless test command runs successfully in the supported Godot version.
 
 ## Roadmap
@@ -64,8 +64,7 @@ The binding system is not production-ready until all of these are true:
 - [x] Verify Messenger callback lifetime behavior for bound methods.
 
 **Exit criteria:** focused regression tests pass for each production-gate item
-above that concerns the current runtime. Callback lifetime verification remains
-open until the messaging storage contract is finalized.
+above that concerns the current runtime.
 
 ### Phase 1: Binding lifecycle and validation
 
@@ -113,6 +112,7 @@ failures identify the offending binding.
   presentation state.
 - [x] Improve list reconciliation beyond index-only updates with optional
   `item_key` identity.
+- [x] Reject missing and duplicate `item_key` values before mutating rows.
 - [ ] Define per-item ViewModel/context behavior only if real binding scenarios
   need it.
 
@@ -125,7 +125,7 @@ Only after the binding gate is met:
 
 - Improve implicit and two-way converters.
 - Add command cancellation, errors, progress, and argument support.
-- Add scoped DI and stronger Messenger registration semantics.
+- Add stronger Messenger registration semantics where real use cases require it.
 - Expand async awaitable support.
 
 These are useful toolkit features, but they are not prerequisites for the core
@@ -144,5 +144,6 @@ binding product.
 
 The code-first runtime binder, observable objects, commands, and messaging
 toolkit exist. They should be treated as **prototype/partial**, not as
-production-complete. The next work is lifecycle hardening and invalid-binding
-coverage; metadata/editor authoring is optional and follows the code-first API.
+production-complete. The next work is diagnostics, collection edge cases, and
+real-world example coverage; metadata/editor authoring is optional and follows
+the code-first API.

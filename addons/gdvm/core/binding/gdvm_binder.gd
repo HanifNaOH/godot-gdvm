@@ -153,6 +153,8 @@ func bind_list(container: Node, path: StringName, template: PackedScene, opts: D
 	binding.item_key = StringName(opts.get("item_key", ""))
 	if not _validate_converter(binding.item_converter, "item_converter"):
 		return false
+	if not _validate_item_identities(_read_vm(path), binding.item_key):
+		return false
 	binding.on_added = opts.get("on_added", Callable())
 	binding.on_removed = opts.get("on_removed", Callable())
 	_list_bindings.append(binding)
@@ -296,6 +298,8 @@ func _prune_invalid_bindings() -> void:
 
 func _reconcile_list(binding: ListBinding, value) -> void:
 	var values: Array = value if value is Array else []
+	if not _validate_item_identities(values, binding.item_key):
+		return
 	var old_nodes := binding.item_nodes.duplicate()
 	var old_identities := binding.item_identities.duplicate()
 	var old_by_identity: Dictionary = {}
@@ -307,14 +311,16 @@ func _reconcile_list(binding: ListBinding, value) -> void:
 	for i in values.size():
 		var identity = _item_identity(values[i], binding.item_key, i)
 		var item: Node = old_by_identity.get(identity)
-		if item != null and is_instance_valid(item):
-			old_by_identity.erase(identity)
-		else:
+		var is_new := item == null or not is_instance_valid(item)
+		if is_new:
 			item = binding.template.instantiate()
+		else:
+			old_by_identity.erase(identity)
+		_write_item(item, binding.item_prop, values[i], binding.item_converter)
+		if is_new:
 			binding.container.add_child(item)
 			added += 1
 			if binding.on_added.is_valid(): binding.on_added.call(item)
-		_write_item(item, binding.item_prop, values[i], binding.item_converter)
 		next_nodes.append(item)
 		next_identities.append(identity)
 		if item.get_index() != i:
@@ -335,10 +341,33 @@ func _reconcile_list(binding: ListBinding, value) -> void:
 func _item_identity(value, key: StringName, index: int):
 	if not key.is_empty():
 		if value is Dictionary:
-			return value.get(key, index)
+			return value.get(key)
 		if value is Object and key in value:
 			return value.get(key)
 	return value if value is Object else "%s:%s:%s" % [typeof(value), str(value), index]
+
+func _validate_item_identities(value, key: StringName) -> bool:
+	if key.is_empty():
+		return true
+	if not value is Array:
+		push_error("GdvmBinder: item_key requires the ViewModel value to be an Array.")
+		return false
+	var identities: Dictionary = {}
+	for i in value.size():
+		var item = value[i]
+		var identity = null
+		if item is Dictionary and item.has(key):
+			identity = item[key]
+		elif item is Object and key in item:
+			identity = item.get(key)
+		if identity == null or (identity is String and identity.is_empty()) or (identity is StringName and identity.is_empty()):
+			push_error("GdvmBinder: item at index %d is missing item_key '%s'." % [i, key])
+			return false
+		if identities.has(identity):
+			push_error("GdvmBinder: duplicate item_key '%s' at indices %d and %d." % [identity, identities[identity], i])
+			return false
+		identities[identity] = i
+	return true
 
 func _write_item(item: Node, prop: StringName, value, converter: StringName) -> void:
 	if not prop.is_empty(): item.set(prop, _convert(value, converter))

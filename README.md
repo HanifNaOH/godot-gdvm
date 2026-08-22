@@ -81,8 +81,8 @@ Before using GDVM as a shared production dependency, the project must complete:
 - Runtime correctness for multiple message subscribers and bulk ViewModel changes
 - Reliable ViewModel replacement and bound-node teardown
 - Validation and diagnostics for invalid paths, properties, signals, converters, and templates
-- A stable, readable scene metadata contract for binding modes
-- Regression tests covering serialized scene bindings and lifecycle behavior
+- A stable, readable code-first binding contract
+- Regression tests covering code-first bindings and lifecycle behavior
 - Optional editor tooling for users who prefer scene-authored bindings
 
 The current roadmap is in [`.planning/PLAN.md`](.planning/PLAN.md). Unreal

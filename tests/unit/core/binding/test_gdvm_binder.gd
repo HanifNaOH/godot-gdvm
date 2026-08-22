@@ -292,3 +292,44 @@ func test_list_binding_reuses_rows_by_item_key_when_reordered() -> void:
 	GdvmBinder.clear_converters()
 	binder.dispose()
 	autofree(view_owner)
+
+
+func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1, "text": "A"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_prop": &"text",
+		"item_key": &"id",
+	}))
+
+	vm.items = [{"id": 1, "text": "A2"}, {"id": 1, "text": "duplicate"}]
+
+	assert_eq(container.get_child_count(), 1)
+	assert_eq((container.get_child(0) as Label).text, "A")
+	assert_push_error("duplicate item_key")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_missing_item_key_is_rejected_before_binding_creation() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"text": "missing id"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_false(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_prop": &"text",
+		"item_key": &"id",
+	}))
+	assert_eq(container.get_child_count(), 0)
+	assert_push_error("missing item_key 'id'")
+	binder.dispose()
+	autofree(view_owner)
