@@ -34,6 +34,37 @@ class IntVm extends ObservableObject:
 				ratio = v
 
 
+class BulkVm extends ObservableObject:
+	var first: String = "old first":
+		set(v):
+			if set_property(&"first", first, v):
+				first = v
+
+	var second: String = "old second":
+		set(v):
+			if set_property(&"second", second, v):
+				second = v
+
+	func update_values(new_first: String, new_second: String) -> void:
+		if set_properties({
+			&"first": [first, new_first],
+			&"second": [second, new_second],
+		}):
+			first = new_first
+			second = new_second
+
+
+class CustomSignalVm extends ObservableObject:
+	signal custom_changed(property_name: StringName, old_value, new_value)
+
+	var greeting: String:
+		set(v):
+			if greeting != v:
+				var old_value := greeting
+				greeting = v
+				custom_changed.emit(&"greeting", old_value, v)
+
+
 class ContextProvider extends Node:
 	var view_model: Object
 
@@ -87,6 +118,43 @@ func test_one_way_ignores_unrelated_change() -> void:
 	# notify a different property; the label bound to "greeting" must not change
 	vm.notify_property_changed(&"other")
 	assert_eq(label.text, "Hello")
+	autoqfree(view)
+
+
+func test_bulk_change_uses_authoritative_values_for_each_binding() -> void:
+	var vm := BulkVm.new()
+	var first_label := Label.new()
+	first_label.set_meta(&"_gdvm_binding", {"path": "first", "prop": "text", "mode": 0})
+	var second_label := Label.new()
+	second_label.set_meta(&"_gdvm_binding", {"path": "second", "prop": "text", "mode": 0})
+
+	var view := GdvmView.new()
+	view.add_child(first_label)
+	view.add_child(second_label)
+	view.set_view_model(vm)
+
+	vm.update_values("new first", "new second")
+
+	assert_eq(first_label.text, "new first")
+	assert_eq(second_label.text, "new second")
+	autoqfree(view)
+
+
+func test_change_signal_override_works_before_and_after_view_model_assignment() -> void:
+	var vm := CustomSignalVm.new()
+	vm.greeting = "Initial"
+	var label := Label.new()
+	label.set_meta(&"_gdvm_binding", {"path": "greeting", "prop": "text", "mode": 0})
+	var view := GdvmView.new()
+	view.add_child(label)
+	view.set_change_signal(&"custom_changed")
+	view.set_view_model(vm)
+
+	vm.greeting = "Before override"
+	assert_eq(label.text, "Before override")
+	view.set_change_signal(&"custom_changed")
+	vm.greeting = "After override"
+	assert_eq(label.text, "After override")
 	autoqfree(view)
 
 

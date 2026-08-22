@@ -56,17 +56,21 @@ func set_property(property_name: StringName, old_value, new_value) -> bool:
 ## [checks] A Dictionary of {property_name: [old_value, new_value]}.
 func set_properties(checks: Dictionary) -> int:
 	var change_count := 0
+	var changed_values: Dictionary = {}
 	for property_name: StringName in checks:
 		var pair: Array = checks[property_name]
 		if pair[0] != pair[1]:
 			change_count += 1
+			changed_values[property_name] = pair[1]
 			on_property_changing(property_name, pair[0], pair[1])
 	if change_count > 0:
 		for property_name: StringName in checks:
 			var pair: Array = checks[property_name]
 			if pair[0] != pair[1]:
 				on_property_changed(property_name)
-		changed.emit(&"", null, null)
+		# The value dictionary is authoritative because setter bodies have not
+		# necessarily written their values yet when this signal is emitted.
+		changed.emit(&"", null, changed_values)
 	return change_count
 
 ## Manually notify listeners that a property has changed.
@@ -90,6 +94,8 @@ func on_property_changing(property_name: StringName, old_value, new_value) -> vo
 	pass
 
 ## Override this to react to property changes in subclasses.
-## Called AFTER the value is set (by the caller) and BEFORE `changed` is emitted.
+## Called after on_property_changing and before the caller writes the value.
+## The candidate value is available to the setter and changed signal, but the
+## property getter still returns the old value at this point.
 func on_property_changed(property_name: StringName) -> void:
 	pass

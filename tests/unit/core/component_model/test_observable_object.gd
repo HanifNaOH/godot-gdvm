@@ -75,7 +75,7 @@ func test_set_properties_emits_once_for_bulk_change() -> void:
 	assert_eq(received.size(), 1)
 	assert_eq(received[0][0], &"")
 	assert_null(received[0][1])
-	assert_null(received[0][2])
+	assert_eq(received[0][2], {&"a": 1, &"b": 2})
 
 
 func test_set_properties_returns_zero_when_nothing_changed() -> void:

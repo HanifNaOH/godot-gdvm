@@ -56,6 +56,7 @@ var _view_model: Object
 ## Defaults to `changed` (the `ObservableObject` convention). Resource-based
 ## ViewModels may use `property_changed` to avoid `Resource.changed`.
 var _change_signal: StringName = &"changed"
+var _change_signal_overridden: bool = false
 
 ## ── ViewModel resolution (Unreal §4) ──────────────────────────────────────
 
@@ -179,7 +180,8 @@ func set_view_model(vm: Object) -> void:
 	_clear_bindings()
 	_view_model = vm
 	if vm != null:
-		_change_signal = _resolve_change_signal(vm)
+		if not _change_signal_overridden:
+			_change_signal = _resolve_change_signal(vm)
 		_view_model.connect(_change_signal, _on_vm_changed)
 		_build_bindings()
 
@@ -331,7 +333,13 @@ func _resolve_context() -> Object:
 ## Prefer declaring `const CHANGE_SIGNAL` on the ViewModel instead; this manual
 ## override remains for edge cases where the signal cannot be declared there.
 func set_change_signal(signal_name: StringName) -> void:
+	if _view_model != null and is_instance_valid(_view_model):
+		if _view_model.is_connected(_change_signal, _on_vm_changed):
+			_view_model.disconnect(_change_signal, _on_vm_changed)
 	_change_signal = signal_name
+	_change_signal_overridden = true
+	if _view_model != null and is_instance_valid(_view_model):
+		_view_model.connect(_change_signal, _on_vm_changed)
 
 
 ## Discover the ViewModel's change-notification signal.
@@ -608,12 +616,18 @@ func _on_vm_changed(property_name: StringName, old_value, new_value) -> void:
 		if binding.mode == Mode.ONE_WAY_TO_SOURCE or binding.mode == Mode.ONE_TIME:
 			continue
 		if property_name.is_empty() or property_name == binding.path:
+			var value = new_value
+			if property_name.is_empty():
+				value = new_value.get(binding.path, _read_vm_value(binding.path)) if new_value is Dictionary else _read_vm_value(binding.path)
 			binding.writing = true
-			_apply_binding_value(binding, new_value, old_value)
+			_apply_binding_value(binding, value, old_value)
 			binding.writing = false
 	for list_binding in _list_bindings:
 		if property_name.is_empty() or property_name == list_binding.path:
-			_reconcile_list(list_binding, new_value)
+			var value = new_value
+			if property_name.is_empty():
+				value = new_value.get(list_binding.path, _read_vm_value(list_binding.path)) if new_value is Dictionary else _read_vm_value(list_binding.path)
+			_reconcile_list(list_binding, value)
 
 
 ## Called when a bound node signal fires (node -> VM direction).
