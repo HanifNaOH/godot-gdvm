@@ -95,6 +95,36 @@ func test_cancel_finishes_execution_and_ignores_late_completion() -> void:
 	assert_eq(states, [true, false])
 
 
+func test_cancel_invokes_optional_cancellation_callback() -> void:
+	var timer := get_tree().create_timer(0.1)
+	var cancellations := [0]
+	var cmd := AsyncRelayCommand.new(
+		func(): return timer.timeout,
+		Callable(),
+		func(): cancellations[0] += 1
+	)
+
+	cmd.execute()
+	cmd.cancel()
+
+	assert_eq(cancellations[0], 1)
+
+
+func test_async_callback_receives_cancellation_token() -> void:
+	var timer := get_tree().create_timer(0.1)
+	var tokens: Array = []
+	var cmd := AsyncRelayCommand.new(func(_args, token):
+		tokens.append(token)
+		return timer.timeout
+	)
+
+	cmd.execute()
+	assert_eq(tokens.size(), 1)
+	assert_false(tokens[0].is_cancelled)
+	cmd.cancel()
+	assert_true(tokens[0].is_cancelled)
+
+
 func test_report_progress_emits_only_while_running() -> void:
 	var progress: Array = []
 	var command_holder: Array = [null]

@@ -27,6 +27,11 @@
 class_name AsyncRelayCommand
 extends RelayCommand
 
+class CancellationToken extends RefCounted:
+	var is_cancelled: bool = false
+
+func get_cancellation_token() -> CancellationToken:
+	return _cancellation_token
 
 ## Emitted when execution starts (true) and finishes (false).
 signal execution_state_changed(is_running: bool)
@@ -36,6 +41,8 @@ signal execution_cancelled
 
 var _is_running: bool = false
 var _async_execute: Callable
+var _cancel_execute: Callable
+var _cancellation_token: CancellationToken
 var _execution_id: int = 0
 var _cancelled_id: int = -1
 var _failed_id: int = -1
@@ -43,9 +50,10 @@ var _failed_id: int = -1
 ## Create a new AsyncRelayCommand.
 ## [async_execute] The async action (must return a value that can be awaited, or null).
 ## [can_execute] Optional predicate. Auto-false while running.
-func _init(async_execute: Callable, can_execute: Callable = Callable()) -> void:
+func _init(async_execute: Callable, can_execute: Callable = Callable(), cancel_execute: Callable = Callable()) -> void:
 	assert(async_execute.is_valid(), "AsyncRelayCommand: async_execute callback must be valid.")
 	_async_execute = async_execute
+	_cancel_execute = cancel_execute
 	# Wire up a combined can_execute that also checks _is_running
 	var base_can_execute = can_execute if can_execute.is_valid() else func() -> bool: return true
 	var combined = func(args: Array) -> bool:
@@ -60,10 +68,11 @@ func _execute_async(args: Array = []) -> void:
 	_is_running = true
 	_execution_id += 1
 	var execution_id := _execution_id
+	_cancellation_token = CancellationToken.new()
 	execution_state_changed.emit(true)
 	notify_can_execute_changed()
 	
-	var result = RelayCommand._call_callback(_async_execute, args)
+	var result = _async_execute.call(args, _cancellation_token) if _async_execute.get_argument_count() >= 2 else RelayCommand._call_callback(_async_execute, args)
 	# In Godot 4, an async callable returns a Signal: either an explicit signal
 	# (e.g. `timer.timeout`) or the coroutine's implicit completion signal when
 	# the callable body contains `await`. We connect to it to know when the
@@ -92,6 +101,12 @@ func _on_async_finished(execution_id: int) -> void:
 func cancel() -> void:
 	if not _is_running:
 		return
+	_cancellation_token.is_cancelled = true
+	if _cancel_execute.is_valid():
+		if _cancel_execute.get_argument_count() >= 1:
+			_cancel_execute.call(_cancellation_token)
+		else:
+			_cancel_execute.call()
 	_cancelled_id = _execution_id
 	execution_cancelled.emit()
 	_on_async_finished(_execution_id)

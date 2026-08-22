@@ -43,6 +43,7 @@ func _make_label_scene() -> PackedScene:
 	var root := Label.new()
 	var error := scene.pack(root)
 	assert_eq(error, OK)
+	root.free()
 	return scene
 
 
@@ -55,6 +56,7 @@ func _make_item_row_scene() -> PackedScene:
 	label.owner = root
 	var error := scene.pack(root)
 	assert_eq(error, OK)
+	root.free()
 	return scene
 
 
@@ -122,7 +124,7 @@ func test_list_binding_adds_removes_and_disposes_rows() -> void:
 		"item_prop": &"text",
 		"on_removed": func(item: Node):
 			removed.append(item)
-			item.queue_free(),
+			item.free(),
 	}))
 	assert_eq(container.get_child_count(), 1)
 	assert_eq((container.get_child(0) as Label).text, "A")
@@ -135,7 +137,7 @@ func test_list_binding_adds_removes_and_disposes_rows() -> void:
 
 	binder.dispose()
 	assert_eq(container.get_child_count(), 0)
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_freed_bound_node_is_ignored_on_later_view_model_change() -> void:
@@ -315,7 +317,7 @@ func test_list_binding_reuses_rows_by_item_key_when_reordered() -> void:
 	assert_eq((container.get_child(1) as Label).text, "A2")
 	GdvmBinder.clear_converters()
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_list_binding_creates_per_item_view_models() -> void:
@@ -341,7 +343,7 @@ func test_list_binding_creates_per_item_view_models() -> void:
 	assert_same((container.get_child(0) as ItemRow).item_view_model, created[0])
 	assert_same((container.get_child(1) as ItemRow).item_view_model, created[1])
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_each_item_view_model_drives_its_own_row_binder() -> void:
@@ -369,7 +371,7 @@ func test_each_item_view_model_drives_its_own_row_binder() -> void:
 	assert_eq(first_row.label.text, "first updated")
 	assert_eq(second_row.label.text, "item_2")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_item_view_model_factory_rejects_rows_without_a_view_model_setter() -> void:
@@ -388,7 +390,7 @@ func test_item_view_model_factory_rejects_rows_without_a_view_model_setter() -> 
 	assert_eq(container.get_child_count(), 0)
 	assert_push_error("must implement set_item_view_model() or set_view_model()")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
@@ -411,7 +413,7 @@ func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
 	assert_eq((container.get_child(0) as Label).text, "A")
 	assert_push_error("duplicate item_key")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_missing_item_key_is_rejected_before_binding_creation() -> void:
@@ -430,7 +432,7 @@ func test_missing_item_key_is_rejected_before_binding_creation() -> void:
 	assert_eq(container.get_child_count(), 0)
 	assert_push_error("missing item_key 'id'")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_builtin_converters_transform_values() -> void:
@@ -543,6 +545,19 @@ func test_on_changed_callback_receives_node_value_and_old_value() -> void:
 	autofree(view_owner)
 
 
+func test_invalid_optional_callbacks_are_rejected() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(Vm.new())
+
+	assert_false(binder.bind(label, &"greeting", "text", {"on_changed": "not callable"}))
+	assert_push_error("on_changed must be a valid Callable")
+	binder.dispose()
+	autofree(view_owner)
+
+
 func test_setting_view_model_to_null_stops_existing_bindings() -> void:
 	var view_owner := Node.new()
 	var label := Label.new()
@@ -576,7 +591,7 @@ func test_list_binding_emits_added_and_removed_counts() -> void:
 
 	assert_eq(changes, [[1, 0], [1, 0], [0, 2]])
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_callable_item_converter_transforms_each_row() -> void:
@@ -595,7 +610,7 @@ func test_callable_item_converter_transforms_each_row() -> void:
 	assert_eq((container.get_child(0) as Label).text, "ONE")
 	assert_eq((container.get_child(1) as Label).text, "TWO")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
 
 
 func test_item_view_model_factory_reuses_keyed_rows() -> void:
@@ -626,7 +641,66 @@ func test_item_view_model_factory_reuses_keyed_rows() -> void:
 	assert_same(container.get_child(0), second_row)
 	assert_same(container.get_child(1), first_row)
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()
+
+
+func test_replacing_parent_view_model_replaces_nested_item_view_models() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	add_child(view_owner)
+	view_owner.add_child(container)
+	var first_vm := ListVm.new()
+	first_vm.items = [{"id": 1}]
+	var second_vm := ListVm.new()
+	second_vm.items = [{"id": 1}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(first_vm)
+	var created: Array = []
+
+	assert_true(binder.bind_list(container, &"items", _make_item_row_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(value):
+			var item_vm := Vm.new()
+			item_vm.greeting = "vm_%d_%d" % [created.size(), value["id"]]
+			created.append(item_vm)
+			return item_vm,
+	}))
+	var row := container.get_child(0) as ItemRow
+	var original_item_vm := row.item_view_model
+
+	binder.set_view_model(second_vm)
+
+	assert_eq(created.size(), 2)
+	assert_not_same(row.item_view_model, original_item_vm)
+	assert_eq(row.label.text, "vm_1_1")
+	binder.dispose()
+	view_owner.free()
+
+
+func test_keyed_collection_mutation_reuses_survivors_and_removes_stale_rows() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_key": &"id",
+		"item_prop": &"text",
+		"item_converter": func(value): return value["text"],
+	}))
+	var original_second_row := container.get_child(1)
+
+	vm.items = [{"id": 2, "text": "B2"}, {"id": 3, "text": "C"}]
+
+	assert_eq(container.get_child_count(), 2)
+	assert_same(container.get_child(0), original_second_row)
+	assert_eq((container.get_child(0) as Label).text, "B2")
+	assert_eq((container.get_child(1) as Label).text, "C")
+	binder.dispose()
+	view_owner.free()
 
 
 func test_invalid_callable_converter_is_rejected() -> void:
@@ -654,4 +728,4 @@ func test_invalid_item_view_model_factory_is_rejected() -> void:
 	}))
 	assert_push_error("item_view_model_factory must be a valid Callable")
 	binder.dispose()
-	autofree(view_owner)
+	view_owner.free()

@@ -8,6 +8,18 @@ This integration resolves several critical limitations of vanilla MVVM implement
 
 The toolkit features are strictly separated into their semantic namespaces within `addons/gdvm/core/`, mirroring the .NET implementation.
 
+## Public API and compatibility
+
+Use the `Gdvm` facade or the documented classes directly: `ObservableObject`,
+`ObservableRecipient`, `GdvmBinder`, `RelayCommand`, `AsyncRelayCommand`,
+`Messenger`, and the request message types. Internal files and helper symbols
+under `addons/gdvm/core/` may change without being public API.
+
+GDVM 1.0.0 follows SemVer: major releases may break the public API, minor
+releases add compatible features, and patch releases contain compatible fixes.
+Deprecated APIs remain available for at least one minor release when practical,
+with migration guidance in release notes.
+
 You can resolve them globally via the `Gdvm` singleton:
 
 ```gdscript
@@ -96,8 +108,21 @@ vm.save_command.execution_state_changed.connect(func(running):
 
 `AsyncRelayCommand` also exposes `cancel()`, `report_progress(value)`, and
 `fail(error)`. These emit `execution_cancelled`, `progress_changed(value)`,
-and `execution_failed(error)` respectively. Cancellation stops tracking the
-current operation; it does not forcibly interrupt the underlying work.
+and `execution_failed(error)` respectively. Pass a third constructor argument
+to cancel the underlying operation when it supports cancellation:
+
+```gdscript
+var request = AsyncRelayCommand.new(
+	func(): return api.request(),
+	Callable(),
+	func(): api.cancel_request(),
+)
+```
+
+Without that callback, cancellation stops tracking the current operation but
+does not forcibly interrupt the underlying work. For operations that can poll
+for cancellation, declare the async callback with `(args, token)`; the token's
+`is_cancelled` property is set immediately by `cancel()`.
 
 ---
 

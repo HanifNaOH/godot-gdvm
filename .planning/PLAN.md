@@ -129,7 +129,9 @@ Only after the binding gate is met:
 - Expand async awaitable support.
 
 The command slice now supports optional argument arrays, logical cancellation,
-progress reporting, and explicit failure signaling.
+optional underlying-operation cancellation callbacks, progress reporting, and
+explicit failure signaling. Binder callback options are validated before use,
+and list test teardown frees binder-owned rows deterministically.
 
 These are useful toolkit features, but they are not prerequisites for the core
 binding product.

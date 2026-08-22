@@ -8,7 +8,7 @@
 
 | GDVM | Godot |
 |------|-------|
-| ~0.3 | ^4.5 |
+| 1.0.0 | ^4.7 |
 
 ## What is this
 
@@ -75,11 +75,14 @@ bindings and UI behavior explicit.
 
 ## Project status
 
-GDVM is currently **beta/prototype**, not a production-ready framework. The
-runtime binding engine exists, but the production foundation is still being
-hardened.
+GDVM 1.0.0 is the current stable public API for Godot 4.7. The runtime is
+covered by the repository's automated test and integration suites.
 
-Before using GDVM as a shared production dependency, the project must complete:
+For Windows exports, install the export templates matching the editor build
+being used. The included `Windows` preset is intended for the Mono editor and
+requires the matching `4.7.1.stable.mono` templates.
+
+The project continues to harden the following areas:
 
 - Runtime correctness for multiple message subscribers and bulk ViewModel changes
 - Reliable ViewModel replacement and bound-node teardown
@@ -159,7 +162,8 @@ GDVM also ships the companion abstractions documented in
 
 - `RelayCommand` / `AsyncRelayCommand` — commands (Unreal: ICommand). Commands
 	accept an optional argument array; async commands also expose cancellation,
-	progress, and failure signals.
+	progress, and failure signals. Pass an optional cancellation callback to
+	`AsyncRelayCommand.new()` when the underlying operation supports cancellation.
 - `Messenger` / `RequestMessage` — decoupled pub/sub and request/response.
 - `ObservableRecipient` — `ObservableObject` + automatic `Messenger` lifecycle.
 
@@ -172,8 +176,19 @@ stale value).
 
 ## Usage notes
 
-**Gdvm is still in beta.** APIs are not yet stable; updates before 1.0 are
-breaking. Use with care.
+### Public API and compatibility
+
+The supported public API is exposed through the `Gdvm` facade and the
+code-first classes documented in this README and `MVVM_TOOLKIT.md`:
+`ObservableObject`, `ObservableRecipient`, `GdvmBinder`, `RelayCommand`,
+`AsyncRelayCommand`, `Messenger`, and the request message types. Files under
+`addons/gdvm/core/` are implementation locations, not a promise that every
+internal symbol is public.
+
+The public API follows SemVer: breaking public API changes require a major
+version, backward-compatible features use minor versions, and fixes use patch
+versions. Deprecated APIs remain available for at least one minor release when
+practical, with migration notes in release documentation.
 
 The previous DataNode/Observer/Writer/Binder data-binding layer has been
 **removed** in favor of the code-first `ObservableObject` + `GdvmBinder` stack.

@@ -107,7 +107,7 @@ func set_view_model(vm: Object) -> bool:
 	for binding in _bindings:
 		_push(binding)
 	for list_binding in _list_bindings:
-		_reconcile_list(list_binding, _read_vm(list_binding.path))
+		_reconcile_list(list_binding, _read_vm(list_binding.path), true)
 	return true
 
 func get_view_model() -> Object:
@@ -131,7 +131,10 @@ func bind(node: Node, path: StringName, prop: String, opts: Dictionary = {}) -> 
 		binding.converter = _as_string_name(converter_value)
 	if not _validate_converter(binding.converter, "converter", binding.converter_callable):
 		return false
-	binding.on_changed = opts.get("on_changed", Callable())
+	var on_changed = opts["on_changed"] if opts.has("on_changed") else null
+	if not _validate_optional_callback(on_changed, "on_changed"):
+		return false
+	binding.on_changed = on_changed if on_changed is Callable else Callable()
 	if opts.get("tween", {}) is Dictionary:
 		binding.tween_opts = opts.get("tween", {})
 	if mode == Mode.ONE_WAY_TO_SOURCE or mode == Mode.TWO_WAY:
@@ -179,8 +182,12 @@ func bind_list(container: Node, path: StringName, template: PackedScene, opts: D
 		return false
 	if not _validate_item_identities(_read_vm(path), binding.item_key):
 		return false
-	binding.on_added = opts.get("on_added", Callable())
-	binding.on_removed = opts.get("on_removed", Callable())
+	var on_added = opts["on_added"] if opts.has("on_added") else null
+	var on_removed = opts["on_removed"] if opts.has("on_removed") else null
+	if not _validate_optional_callback(on_added, "on_added") or not _validate_optional_callback(on_removed, "on_removed"):
+		return false
+	binding.on_added = on_added if on_added is Callable else Callable()
+	binding.on_removed = on_removed if on_removed is Callable else Callable()
 	if not _reconcile_list(binding, _read_vm(path)):
 		return false
 	_list_bindings.append(binding)
@@ -196,7 +203,7 @@ func dispose() -> void:
 	for list_binding in _list_bindings:
 		for item in list_binding.item_nodes:
 			if is_instance_valid(item):
-				item.queue_free()
+				item.free()
 		list_binding.item_nodes.clear()
 		list_binding.item_identities.clear()
 	_list_bindings.clear()
@@ -234,6 +241,17 @@ func _as_string_name(value) -> StringName:
 	if value is StringName:
 		return value
 	return StringName(str(value))
+
+func _validate_optional_callback(callback, field_name: String) -> bool:
+	if callback == null:
+		return true
+	if callback is Callable and (not callback.is_valid()):
+		push_error("GdvmBinder: %s must be a valid Callable." % field_name)
+		return false
+	if not callback is Callable:
+		push_error("GdvmBinder: %s must be a valid Callable." % field_name)
+		return false
+	return true
 
 func _validate_converter(name: StringName, field_name: String, converter: Callable = Callable()) -> bool:
 	if converter.is_valid():
@@ -328,7 +346,7 @@ func _prune_invalid_bindings() -> void:
 				binding.item_nodes.remove_at(item_i)
 				binding.item_identities.remove_at(item_i)
 
-func _reconcile_list(binding: ListBinding, value) -> bool:
+func _reconcile_list(binding: ListBinding, value, replace_item_view_models: bool = false) -> bool:
 	var values: Array = value if value is Array else []
 	if not _validate_item_identities(values, binding.item_key):
 		return false
@@ -349,8 +367,12 @@ func _reconcile_list(binding: ListBinding, value) -> bool:
 			binding.container.add_child(item)
 			if not _assign_item_view_model(binding, item, values[i]):
 				binding.container.remove_child(item)
-				item.queue_free()
+				item.free()
 				return false
+		elif replace_item_view_models and binding.item_view_model_factory.is_valid():
+			if not _assign_item_view_model(binding, item, values[i]):
+				return false
+			old_by_identity.erase(identity)
 		else:
 			old_by_identity.erase(identity)
 		_write_item(item, binding.item_prop, values[i], binding.item_converter, binding.item_converter_callable)
@@ -368,7 +390,7 @@ func _reconcile_list(binding: ListBinding, value) -> bool:
 		removed += 1
 		binding.container.remove_child(item)
 		if binding.on_removed.is_valid(): binding.on_removed.call(item)
-		else: item.queue_free()
+		else: item.free()
 	binding.item_nodes = next_nodes
 	binding.item_identities = next_identities
 	if added > 0 or removed > 0:
