@@ -113,7 +113,7 @@ failures identify the offending binding.
 - [x] Improve list reconciliation beyond index-only updates with optional
   `item_key` identity.
 - [x] Reject missing and duplicate `item_key` values before mutating rows.
-- [ ] Define per-item ViewModel/context behavior only if real binding scenarios
+- [x] Define per-item ViewModel/context behavior only if real binding scenarios
   need it.
 
 **Exit criteria:** list and resolver behavior is documented, deterministic, and
