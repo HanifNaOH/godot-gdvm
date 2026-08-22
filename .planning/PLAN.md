@@ -14,7 +14,7 @@ The product promise is:
 > Code-first ViewModel binding for Godot scenes.
 
 Unreal feature parity is reference material, not the roadmap. Commands,
-messaging, dependency injection, and advanced collection behavior are secondary
+messaging, and advanced collection behavior are secondary
 until the binding workflow is reliable and pleasant.
 
 ## Supported architecture
@@ -61,7 +61,7 @@ The binding system is not production-ready until all of these are true:
 - [x] Decide and document `on_property_changed` timing consistently.
 - [x] Make `set_change_signal` reconnect correctly and define its precedence over
   ViewModel-discovered signals.
-- [ ] Verify command and messenger callback lifetime behavior.
+- [x] Verify Messenger callback lifetime behavior for bound methods.
 
 **Exit criteria:** focused regression tests pass for each production-gate item
 above that concerns the current runtime. Callback lifetime verification remains
@@ -69,12 +69,13 @@ open until the messaging storage contract is finalized.
 
 ### Phase 1: Binding lifecycle and validation
 
-- Give bindings explicit attach/detach cleanup behavior.
-- Disconnect old ViewModels before assigning replacements.
-- Handle bound nodes being removed or freed at runtime.
-- Validate ViewModel paths, node properties, node signals, converters, and list
-  templates before creating a binding.
-- Report the scene node path, ViewModel path, and invalid field in diagnostics.
+- [x] Give bindings explicit attach/detach cleanup behavior.
+- [x] Disconnect old ViewModels before assigning replacements.
+- [x] Handle bound nodes being freed at runtime.
+- [x] Validate ViewModel paths, node properties, and node signals before creating
+  a binding.
+- [x] Validate converters and list templates before creating a binding.
+- [x] Report the scene node name/path, ViewModel path, and invalid field in diagnostics.
 
 **Exit criteria:** repeated setup/teardown and invalid metadata tests pass with
 no stale callbacks or partial bindings.
@@ -94,11 +95,11 @@ reintroduce an invisible runtime helper node.
 
 ### Phase 3: Binding behavior and test coverage
 
-- Test one-way, one-time, one-way-to-source, and two-way bindings from actual
-  scene metadata.
-- Test initial values, unrelated notifications, repeated ViewModel replacement,
-  node teardown, and echo suppression.
-- Define converter failure behavior and two-way conversion requirements.
+- [x] Test code-first one-way and two-way binding behavior.
+- [x] Test initial values, ViewModel replacement, disposal, invalid paths, and
+  invalid node signals/properties.
+- [x] Define explicit reverse conversion support for two-way bindings.
+- [x] Add tests for one-time, list lifecycle, node teardown, and converter failure.
 - Add a small runtime binding inspection/diagnostic mode for debugging.
 
 **Exit criteria:** the binding contract is covered by focused GUT tests and
@@ -106,13 +107,14 @@ failures identify the offending binding.
 
 ### Phase 4: Collections and ViewModel ownership
 
-- Define ownership for ViewModels created by a view, resolved globally, or
-  supplied by context.
-- Document disposal behavior for views, ViewModels, commands, and services.
-- Improve list reconciliation beyond index-only updates where stable identity is
-  needed.
-- Define per-item ViewModel/context behavior only if real binding scenarios need
-  it.
+- [x] Define the real view Node as the owner of a `GdvmBinder` instance.
+- [x] Dispose the binder from the view's `_exit_tree()` lifecycle.
+- [x] Document that ViewModels are not network authorities and are local
+  presentation state.
+- [x] Improve list reconciliation beyond index-only updates with optional
+  `item_key` identity.
+- [ ] Define per-item ViewModel/context behavior only if real binding scenarios
+  need it.
 
 **Exit criteria:** list and resolver behavior is documented, deterministic, and
 covered by lifecycle tests.
@@ -140,7 +142,7 @@ binding product.
 
 ## Current status
 
-The code-first runtime binder, observable objects, commands, messaging, and
-service locator exist. They should be treated as **prototype/partial**, not as
+The code-first runtime binder, observable objects, commands, and messaging
+toolkit exist. They should be treated as **prototype/partial**, not as
 production-complete. The next work is lifecycle hardening and invalid-binding
 coverage; metadata/editor authoring is optional and follows the code-first API.

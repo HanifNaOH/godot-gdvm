@@ -44,11 +44,8 @@ Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
 
 ### Three pillars (Unreal §1)
 
-- **Model** — plain source data (`RefCounted`/`Resource` classes, dictionaries, data tables).
   Not observable by the view.
-- **ViewModel** — an `ObservableObject` (or `DataTree`) that *owns a reference to the Model*
   and exposes **view-ready** properties + signals. The "translator".
-- **View** — a `.tscn` scene whose root carries a `GdvmView` script; nodes declare binding via
   metadata. Binding `path` addresses the **ViewModel, never the Model**.
 
 ### Core shape
@@ -95,19 +92,12 @@ metadata/_gdvm_binding = {
 ## 5. `GdvmBinder` runtime class (`extends RefCounted`)
 
 Responsibilities:
-- `set_view_model(vm)` — store VM and connect its change signal
-- `bind(node, path, prop, opts)` — create an explicit code-first binding
-- `bind_list(container, path, template, opts)` — create an explicit list binding
-- `dispose()` — disconnect all ViewModel and node signals and release rows/tweens
 
 ## 6. ViewModel contract (FieldNotify equivalent, Unreal §2)
 
 `GdvmBinder` binds to a **change-notifying** ViewModel. The VM must emit change notification:
 
-- **Variables** → `ObservableObject.changed` signal (via setters using `set_property`).
-- **Derived data** → a derived property kept in sync by a setter (simplest); an optional
   `get_derived(path)` view override for computed values (Phase 6).
-- **Manual notification** → `ObservableObject.notify_property_changed(name)` (added in Phase 0;
   the `UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED` equivalent).
 
 > **Change routing.** The `changed` signal carries `property_name` (and old/new values). The
@@ -131,9 +121,7 @@ happens depends on the node type — e.g. setting `LineEdit.text` programmatical
 `text_changed`, while setting `CheckBox.button_pressed` **does not** emit `pressed`.
 
 To make `two_way` safe regardless of node type, the binding engine must track **change source**:
-- The `Observer` (node → VM) must skip writing when the VM value it is about to write equals the
   value it just received from the `Writer` (no-op on echo), or
-- the engine suppresses re-entry per binding (a one-tick "writing" flag) so a programmatic
   property set is not interpreted as a user edit.
 
 Recommended: per-binding **source-tagging** — mark writes as `FROM_VM`; the observer ignores
@@ -152,9 +140,7 @@ retro-fitted.
 ## 9. List / panel view extensions (Unreal §7, Phase 4)
 
 When a bound property is a collection:
-- Bind it to a container node; **auto-create / destroy** child view instances per element
   (reuse `WriterNode`/`DataNodeList` + the `template` sub-scene).
-- Emit `items_changed` (added/removed) so views can run custom add/remove animation — the
   `OnItemsChanged` equivalent.
 
 ## 10. Conversion functions (Unreal §5, Phase 6)
@@ -167,11 +153,8 @@ Three tiers (all in code-behind / a conversion library, since metadata can't hol
 
 ## 11. What we keep vs. remove
 
-- **Keep:** the MVVM toolkit (`ObservableObject`, `ObservableRecipient`, `RelayCommand`,
   `AsyncRelayCommand`, `Messenger`, `RequestMessage`, `ServiceLocator`) + `GdvmView`.
-- **Remove (deprecate → delete):** `DataNode` tree (incl. `strict/`), `Observer`/`Writer` core,
   `DataTree`/`ObserverPack`/`WriterPack` binder, and `utils.gd`.
-- **This is a rewrite toward Unreal-ish MVVM only.** The legacy imperative API is not kept.
 
 ## 12. Phased implementation
 
@@ -209,8 +192,4 @@ of the legacy layer (see §11).
 
 ## 14. Open questions (remaining)
 
-- Editor plugin UX for authoring `_gdvm_binding` metadata (Phase 7).
-- Per-item ViewModel/context resolution for list bindings.
-- `AsyncRelayCommand` coverage for non-`Signal` awaitables.
-- Removal sequencing for the legacy layer (`utils.gd`, `core/data_node`, `core/observer`,
   `core/writer`, `binder/`) and its tests/examples (`_1`–`_7`).

@@ -16,7 +16,6 @@ const RelayCommand = Gdvm.RelayCommand
 const AsyncRelayCommand = Gdvm.AsyncRelayCommand
 const Messenger = Gdvm.Messenger
 const ObservableRecipient = Gdvm.ObservableRecipient
-const ServiceLocator = Gdvm.ServiceLocator
 ```
 
 ---
@@ -127,19 +126,15 @@ Messenger.default().register(self, &"player_count_request", func(_r, msg):
 
 ---
 
-## 4. Dependency Injection
+## 4. Dependency injection
 
-`addons/gdvm/core/dependency_injection/`
-
-### `ServiceLocator`
-A simple IoC (Inversion of Control) container for interface-centric service fetching. Rather than having singletons directly hardcoded or coupling ViewModels to specific Repositories, you resolve instances via strings/abstract identifiers.
+GDVM does not provide a Service Locator. Create dependencies in the view or
+composition root and pass them to ViewModels explicitly. Use Godot autoloads
+only for genuinely application-wide services.
 
 ```gdscript
-# During boot:
-ServiceLocator.register_singleton(&"PlayerRepository", PlayerRepository.new())
-
-# Anywhere else:
-var players = ServiceLocator.resolve(&"PlayerRepository")
+var repository := PlayerRepository.new()
+var view_model := PlayerViewModel.new(repository)
 ```
 
 ---

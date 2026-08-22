@@ -40,7 +40,7 @@ static func default():
 static func reset_default() -> void:
 	_default = null
 
-## Internal storage: { message_type(StringName): [{recipient(WeakRef), handler(Callable)}] }
+## Internal storage: { message_type(StringName): [{recipient(WeakRef), handler(Callable), method(StringName)}] }
 var _registrations: Dictionary = {}
 
 ## Register a recipient for a message type.
@@ -48,17 +48,30 @@ var _registrations: Dictionary = {}
 ## [message_type] The StringName identifying the message type.
 ## [handler] A Callable with signature: func(recipient: Object, payload) -> void.
 ##           The recipient is passed as the first argument to avoid capturing `self`.
+##           Prefer register_method() for bound methods. A closure that captures
+##           the recipient can still retain it strongly by design.
 func register(recipient: Object, message_type: StringName, handler: Callable) -> void:
 	assert(is_instance_valid(recipient), "Messenger.register: recipient must be a valid instance.")
 	assert(not message_type.is_empty(), "Messenger.register: message_type cannot be empty.")
 	assert(handler.is_valid(), "Messenger.register: handler must be a valid Callable.")
-	
+	var method_name: StringName = &""
+	var stored_handler := handler
+	if handler.get_object() == recipient and not handler.get_method().is_empty():
+		# Do not retain a bound method's object strongly; reconstruct it while dispatching.
+		method_name = StringName(handler.get_method())
+		stored_handler = Callable()
 	if not _registrations.has(message_type):
 		_registrations[message_type] = []
 	_registrations[message_type].append({
 		recipient = weakref(recipient),
-		handler = handler
+		handler = stored_handler,
+		method = method_name
 	})
+
+## Register a recipient method without storing a bound Callable reference.
+func register_method(recipient: Object, message_type: StringName, method_name: StringName) -> void:
+	assert(recipient.has_method(method_name), "Messenger.register_method: recipient has no method '%s'." % method_name)
+	register(recipient, message_type, Callable(recipient, method_name))
 
 ## Send a message to all registered recipients of this type.
 ## Automatically cleans up dead (freed) recipients during send.
@@ -74,7 +87,10 @@ func send(message_type: StringName, payload = null) -> void:
 	for reg in registrations:
 		var recipient = reg.recipient.get_ref()
 		if is_instance_valid(recipient):
-			reg.handler.call(recipient, payload)
+			var handler: Callable = reg.handler
+			if not reg.method.is_empty():
+				handler = Callable(recipient, reg.method)
+			handler.call(recipient, payload)
 			alive.append(reg)
 		# Dead recipients are silently dropped
 	

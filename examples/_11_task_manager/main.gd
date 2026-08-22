@@ -1,7 +1,7 @@
 ## TaskManagerMainView
 ## The root View code-behind for _11_task_manager — thin, like example 9.
 ##
-##   1. Creates the GdvmView and single TaskViewModel for explicit code-first
+##   1. Creates the GdvmBinder and single TaskViewModel for explicit code-first
 ##      data binding (list + aggregates + search + filter/sort).
 ##   2. Binds each control's event to a ViewModel *function*.
 ##

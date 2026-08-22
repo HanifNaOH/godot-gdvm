@@ -20,8 +20,5 @@ const AsyncRelayCommand = preload("./core/input/async_relay_command.gd")
 const Messenger = preload("./core/messaging/messenger.gd")
 const RequestMessage = preload("./core/messaging/request_message.gd")
 
-# Dependency injection — service resolution (Unreal: MVVMSubsystem)
-const ServiceLocator = preload("./core/dependency_injection/service_locator.gd")
-
 # Code-first runtime binding
 const GdvmBinder = preload("./core/binding/gdvm_binder.gd")

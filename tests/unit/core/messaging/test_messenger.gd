@@ -117,6 +117,26 @@ func test_send_cleans_up_dead_recipients() -> void:
 	assert_eq(messenger.registration_count(&"topic"), 0)
 
 
+func test_bound_method_does_not_keep_recipient_alive() -> void:
+	var messenger := Messenger.new()
+	var listener = Listener.new()
+	messenger.register(listener, &"topic", listener.on_message)
+	listener = null
+
+	messenger.cleanup()
+	assert_eq(messenger.registration_count(&"topic"), 0)
+
+
+func test_register_method_does_not_keep_recipient_alive() -> void:
+	var messenger := Messenger.new()
+	var listener = Listener.new()
+	messenger.register_method(listener, &"topic", &"on_message")
+	listener = null
+
+	messenger.cleanup()
+	assert_eq(messenger.registration_count(&"topic"), 0)
+
+
 func test_cleanup_removes_dead_registrations() -> void:
 	var messenger := Messenger.new()
 	var listener = Listener.new()

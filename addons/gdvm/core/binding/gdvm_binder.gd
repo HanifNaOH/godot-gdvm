@@ -28,6 +28,7 @@ class Binding:
 	var signal_name: StringName
 	var callback: Callable
 	var converter: StringName
+	var reverse_converter: Callable
 	var on_changed: Callable
 	var tween_opts: Dictionary
 	var tween: Tween
@@ -48,7 +49,9 @@ class ListBinding:
 	var template: PackedScene
 	var item_prop: StringName
 	var item_converter: StringName
+	var item_key: StringName
 	var item_nodes: Array = []
+	var item_identities: Array = []
 	var on_added: Callable
 	var on_removed: Callable
 
@@ -58,11 +61,16 @@ class ListBinding:
 		template = p_template
 		item_prop = p_item_prop
 		item_converter = &""
+		item_key = &""
 		on_added = Callable()
 		on_removed = Callable()
 
+
 func _init(owner: Node) -> void:
-	assert(owner != null and is_instance_valid(owner), "GdvmBinder: owner must be a valid Node.")
+	if owner == null or not is_instance_valid(owner):
+		push_error("GdvmBinder: owner must be a valid Node.")
+		_disposed = true
+		return
 	_owner = owner
 	_owner.tree_exiting.connect(dispose, CONNECT_ONE_SHOT)
 
@@ -77,15 +85,24 @@ static func unregister_converter(name: StringName) -> void:
 static func clear_converters() -> void:
 	_global_converters.clear()
 
-func set_view_model(vm: Object) -> void:
+func set_view_model(vm: Object) -> bool:
 	assert(not _disposed, "GdvmBinder: binder has been disposed.")
+	if vm != null:
+		var signal_name := _resolve_change_signal(vm)
+		if not vm.has_signal(signal_name):
+			push_error("GdvmBinder: ViewModel is missing signal '%s'." % signal_name)
+			return false
 	_clear_connections()
 	_view_model = vm
 	if vm == null:
-		return
+		return true
 	_change_signal = _resolve_change_signal(vm)
-	assert(vm.has_signal(_change_signal), "GdvmBinder: ViewModel is missing signal '%s'." % _change_signal)
 	vm.connect(_change_signal, _on_vm_changed)
+	for binding in _bindings:
+		_push(binding)
+	for list_binding in _list_bindings:
+		_reconcile_list(list_binding, _read_vm(list_binding.path))
+	return true
 
 func get_view_model() -> Object:
 	return _view_model
@@ -99,28 +116,43 @@ func bind(node: Node, path: StringName, prop: String, opts: Dictionary = {}) -> 
 		return false
 	var binding := Binding.new(node, path, NodePath(prop), mode)
 	binding.converter = StringName(opts.get("converter", ""))
+	if not _validate_converter(binding.converter, "converter"):
+		return false
 	binding.on_changed = opts.get("on_changed", Callable())
 	if opts.get("tween", {}) is Dictionary:
 		binding.tween_opts = opts.get("tween", {})
 	if mode == Mode.ONE_WAY_TO_SOURCE or mode == Mode.TWO_WAY:
 		var signal_name := StringName(opts.get("signal", ""))
 		if signal_name.is_empty() or not node.has_signal(signal_name):
-			push_error("GdvmBinder: node '%s' is missing binding signal '%s'." % [node.get_path(), signal_name])
+			push_error("GdvmBinder: node '%s' is missing binding signal '%s'." % [_node_label(node), signal_name])
+			return false
+		var reverse_converter = opts.get("reverse_converter", Callable())
+		if reverse_converter != null and not reverse_converter is Callable:
+			push_error("GdvmBinder: reverse_converter must be a valid Callable.")
+			return false
+		if reverse_converter is Callable and not reverse_converter.is_valid():
+			push_error("GdvmBinder: reverse_converter must be a valid Callable.")
 			return false
 		binding.signal_name = signal_name
 		binding.callback = _make_node_callback(binding)
 		node.connect(signal_name, binding.callback)
+		binding.reverse_converter = reverse_converter if reverse_converter is Callable else Callable()
 	_bindings.append(binding)
 	if mode == Mode.ONE_WAY or mode == Mode.ONE_TIME or mode == Mode.TWO_WAY:
 		_push(binding)
 	return true
 
 func bind_list(container: Node, path: StringName, template: PackedScene, opts: Dictionary = {}) -> bool:
-	if not _validate_binding(container, path, "") or template == null:
+	if not _validate_binding(container, path, ""):
+		return false
+	if template == null or not template.can_instantiate():
 		push_error("GdvmBinder: list binding requires a valid container, path, and template.")
 		return false
 	var binding := ListBinding.new(container, path, template, StringName(opts.get("item_prop", "")))
 	binding.item_converter = StringName(opts.get("item_converter", ""))
+	binding.item_key = StringName(opts.get("item_key", ""))
+	if not _validate_converter(binding.item_converter, "item_converter"):
+		return false
 	binding.on_added = opts.get("on_added", Callable())
 	binding.on_removed = opts.get("on_removed", Callable())
 	_list_bindings.append(binding)
@@ -131,12 +163,15 @@ func dispose() -> void:
 	if _disposed:
 		return
 	_disposed = true
+	if _owner != null and is_instance_valid(_owner) and _owner.tree_exiting.is_connected(dispose):
+		_owner.tree_exiting.disconnect(dispose)
 	_clear_connections()
 	for list_binding in _list_bindings:
 		for item in list_binding.item_nodes:
 			if is_instance_valid(item):
 				item.queue_free()
 		list_binding.item_nodes.clear()
+		list_binding.item_identities.clear()
 	_list_bindings.clear()
 	_bindings.clear()
 	_view_model = null
@@ -167,6 +202,14 @@ func _validate_binding(node: Node, path: StringName, prop: String) -> bool:
 
 func _node_label(node: Node) -> String:
 	return str(node.get_path()) if node.is_inside_tree() else node.name
+
+func _validate_converter(name: StringName, field_name: String) -> bool:
+	if name.is_empty() or name == &"identity" or name in [&"str", &"bool_flip", &"percent", &"lowercase", &"uppercase"]:
+		return true
+	if _global_converters.has(name) and _global_converters[name] is Callable and _global_converters[name].is_valid():
+		return true
+	push_error("GdvmBinder: unknown %s '%s'." % [field_name, name])
+	return false
 
 func _mode_from_value(value) -> int:
 	if value is String or value is StringName:
@@ -214,9 +257,13 @@ func _make_node_callback(binding: Binding) -> Callable:
 func _on_node_changed(binding: Binding) -> void:
 	if binding.writing or not is_instance_valid(_view_model):
 		return
-	_view_model.set(binding.path, binding.node.get_indexed(binding.prop))
+	var value = binding.node.get_indexed(binding.prop)
+	if binding.reverse_converter.is_valid():
+		value = binding.reverse_converter.call(value)
+	_view_model.set(binding.path, value)
 
 func _on_vm_changed(property_name: StringName, old_value, new_value) -> void:
+	_prune_invalid_bindings()
 	for binding in _bindings:
 		if binding.mode == Mode.ONE_TIME or binding.mode == Mode.ONE_WAY_TO_SOURCE:
 			continue
@@ -232,26 +279,66 @@ func _on_vm_changed(property_name: StringName, old_value, new_value) -> void:
 				value = new_value.get(binding.path, _read_vm(binding.path))
 			_reconcile_list(binding, value)
 
+func _prune_invalid_bindings() -> void:
+	for i in range(_bindings.size() - 1, -1, -1):
+		var binding: Binding = _bindings[i]
+		if not is_instance_valid(binding.node):
+			_bindings.remove_at(i)
+	for i in range(_list_bindings.size() - 1, -1, -1):
+		var binding: ListBinding = _list_bindings[i]
+		if not is_instance_valid(binding.container):
+			_list_bindings.remove_at(i)
+			continue
+		for item_i in range(binding.item_nodes.size() - 1, -1, -1):
+			if not is_instance_valid(binding.item_nodes[item_i]):
+				binding.item_nodes.remove_at(item_i)
+				binding.item_identities.remove_at(item_i)
+
 func _reconcile_list(binding: ListBinding, value) -> void:
 	var values: Array = value if value is Array else []
-	var common := mini(binding.item_nodes.size(), values.size())
-	for i in common:
-		_write_item(binding.item_nodes[i], binding.item_prop, values[i], binding.item_converter)
-	for i in range(common, values.size()):
-		var item := binding.template.instantiate()
+	var old_nodes := binding.item_nodes.duplicate()
+	var old_identities := binding.item_identities.duplicate()
+	var old_by_identity: Dictionary = {}
+	for i in old_nodes.size():
+		old_by_identity[old_identities[i]] = old_nodes[i]
+	var next_nodes: Array = []
+	var next_identities: Array = []
+	var added := 0
+	for i in values.size():
+		var identity = _item_identity(values[i], binding.item_key, i)
+		var item: Node = old_by_identity.get(identity)
+		if item != null and is_instance_valid(item):
+			old_by_identity.erase(identity)
+		else:
+			item = binding.template.instantiate()
+			binding.container.add_child(item)
+			added += 1
+			if binding.on_added.is_valid(): binding.on_added.call(item)
 		_write_item(item, binding.item_prop, values[i], binding.item_converter)
-		binding.container.add_child(item)
-		binding.item_nodes.append(item)
-		if binding.on_added.is_valid(): binding.on_added.call(item)
-	var removed := maxi(0, binding.item_nodes.size() - values.size())
-	for i in range(removed):
-		var item: Node = binding.item_nodes[values.size()]
-		binding.item_nodes.remove_at(values.size())
+		next_nodes.append(item)
+		next_identities.append(identity)
+		if item.get_index() != i:
+			binding.container.move_child(item, i)
+	var removed := 0
+	for item in old_by_identity.values():
+		if not is_instance_valid(item):
+			continue
+		removed += 1
 		binding.container.remove_child(item)
 		if binding.on_removed.is_valid(): binding.on_removed.call(item)
 		else: item.queue_free()
-	if values.size() != common or removed > 0:
-		items_changed.emit(binding.container, maxi(0, values.size() - common), removed)
+	binding.item_nodes = next_nodes
+	binding.item_identities = next_identities
+	if added > 0 or removed > 0:
+		items_changed.emit(binding.container, added, removed)
+
+func _item_identity(value, key: StringName, index: int):
+	if not key.is_empty():
+		if value is Dictionary:
+			return value.get(key, index)
+		if value is Object and key in value:
+			return value.get(key)
+	return value if value is Object else "%s:%s:%s" % [typeof(value), str(value), index]
 
 func _write_item(item: Node, prop: StringName, value, converter: StringName) -> void:
 	if not prop.is_empty(): item.set(prop, _convert(value, converter))

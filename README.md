@@ -107,18 +107,25 @@ Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmBinder
 
 In the code-first API use the `GdvmBinder.Mode` enum. Two-way and
 one-way-to-source bindings require a `signal` option naming the node signal that
-drives the node → ViewModel direction.
+drives the node → ViewModel direction. When the displayed value needs
+conversion in both directions, provide a `reverse_converter` callable in the
+binding options.
+
+List bindings reuse rows by value or object identity. For dictionaries or model
+objects whose identity must survive reordering, provide an `item_key` option:
+
+```gdscript
+binder.bind_list(%Tasks, &"items", TaskRowScene, {
+	"item_key": &"id",
+	"item_prop": &"text",
+})
+```
 
 ### ViewModel resolvers
 
-ViewModel resolution is handled by the view script and `GdvmBinder`:
-
-| Resolver | Behavior |
-|----------|----------|
-| `manual` | caller provides VM via `set_view_model` |
-| `create_instance` | View instantiates `view_model_class` |
-| `global` | resolve from `ServiceLocator` via `view_model_key` |
-| `context` | walk up the parent hierarchy for an ancestor's VM |
+ViewModels are created by the view or composition root and receive their
+dependencies explicitly. Use Godot autoloads for genuinely application-wide
+services, not for ViewModel state.
 
 ### Converters
 
@@ -128,6 +135,9 @@ Three tiers, applied when writing a value to a node:
 2. **Global** — `GdvmBinder.register_converter(name, callable)`.
 3. **Implicit** — identity fallback when no converter is named.
 
+For Messenger recipients, prefer `register_method()` or a non-capturing handler.
+A closure that captures the recipient intentionally keeps it alive.
+
 ## MVVM Toolkit (CommunityToolkit-style)
 
 GDVM also ships the companion abstractions documented in
@@ -135,7 +145,6 @@ GDVM also ships the companion abstractions documented in
 
 - `RelayCommand` / `AsyncRelayCommand` — commands (Unreal: ICommand).
 - `Messenger` / `RequestMessage` — decoupled pub/sub and request/response.
-- `ServiceLocator` — IoC service resolution (Unreal: MVVMSubsystem).
 - `ObservableRecipient` — `ObservableObject` + automatic `Messenger` lifecycle.
 
 ## Important: `set_property` emit-before-write contract
