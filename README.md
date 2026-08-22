@@ -12,9 +12,15 @@
 
 ## What is this
 
-A Godot plugin implementing an **Unreal-inspired MVVM** framework: an
-`ObservableObject` ViewModel paired with a declarative `GdvmView` that binds
-scene-node properties to ViewModel fields via `.tscn` metadata.
+A Godot plugin for **easy, code-first ViewModel binding**, inspired by Unreal's
+MVVM workflow. It pairs an `ObservableObject` ViewModel with a `GdvmBinder`
+that binds scene-node properties to ViewModel fields.
+
+The goal is simple: reference your nodes in the view script, choose a ViewModel
+property and node property, and declare the binding in one readable place. The
+scene stays visual-only and is not modified with binding metadata. The
+accompanying commands, messaging, and service locator are supporting toolkit
+features.
 
 The Model-View-ViewModel triad:
 
@@ -23,8 +29,8 @@ The Model-View-ViewModel triad:
 - **ViewModel** — an `ObservableObject` that owns a reference to the Model and
   exposes **view-ready** properties. It notifies the View of changes via the
   `changed` signal (the Unreal `FieldNotify` equivalent).
-- **View** — a `.tscn` scene whose root carries a `GdvmView` script. Nodes declare
-  bindings via `metadata/_gdvm_binding`; the view holds zero business logic.
+- **View** — a `.tscn` scene plus a view script. The script owns a
+	`GdvmBinder` and declares bindings; the scene remains visual-only.
 
 ## Quick start
 
@@ -40,36 +46,52 @@ var greeting: String = "hello":
 			greeting = v
 ```
 
-Declare bindings in the scene, on each bound node:
-
-```
-metadata/_gdvm_binding = {
-	"mode": 0,   # GdvmView.Mode enum int: 0=one_way, 1=one_time, 2=one_way_to_source, 3=two_way
-	"path": "greeting",
-	"prop": "text"
-}
-```
-
-Wire the ViewModel to the View in the code-behind:
+Declare bindings directly in the view script:
 
 ```gdscript
 extends Control
 
-@onready var gdvm_view: GdvmView = $GdvmView
+@onready var greeting_label := %Greeting as Label
 
 var view_model: GreetingViewModel
+var binder: GdvmBinder
 
 func _ready() -> void:
 	view_model = GreetingViewModel.new()
-	gdvm_view.set_view_model(view_model)
+	binder = GdvmBinder.new(self)
+	binder.set_view_model(view_model)
+	binder.bind(greeting_label, &"greeting", "text")
+
+func _exit_tree() -> void:
+	binder.dispose()
 ```
 
-See `examples/_9_widget_blueprint/` for the full pattern.
+authored bindings and future editor tooling. It is not required for code-first
+Binding is code-first; scene metadata is not required. See
+`examples/_11_task_manager/` for the full pattern.
+
+## Project status
+
+GDVM is currently **beta/prototype**, not a production-ready framework. The
+runtime binding engine exists, but the production foundation is still being
+hardened.
+
+Before using GDVM as a shared production dependency, the project must complete:
+
+- Runtime correctness for multiple message subscribers and bulk ViewModel changes
+- Reliable ViewModel replacement and bound-node teardown
+- Validation and diagnostics for invalid paths, properties, signals, converters, and templates
+- A stable, readable scene metadata contract for binding modes
+- Regression tests covering serialized scene bindings and lifecycle behavior
+- Optional editor tooling for users who prefer scene-authored bindings
+
+The current roadmap is in [`.planning/PLAN.md`](.planning/PLAN.md). Unreal
+feature parity is reference material; reliable and easy binding comes first.
 
 ## Architecture
 
 ```
-Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
+Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmBinder)
    "source data"       "translator, change-          "visual + binding metadata,
                         notifying via changed"        no business logic"
 ```
@@ -83,13 +105,13 @@ Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
 | `Mode.ONE_WAY_TO_SOURCE` | `2` | node → ViewModel | driven by a node `signal` |
 | `Mode.TWO_WAY` | `3` | ViewModel ↔ node | inputs, checkboxes, sliders |
 
-In the code-first API use the `GdvmView.Mode` enum; in scene metadata store the
-integer shown above. Two-way and one-way-to-source bindings require a `signal`
-field naming the node signal that drives the node → ViewModel direction.
+In the code-first API use the `GdvmBinder.Mode` enum. Two-way and
+one-way-to-source bindings require a `signal` option naming the node signal that
+drives the node → ViewModel direction.
 
 ### ViewModel resolvers
 
-`GdvmView` resolves its ViewModel via `view_model_resolver`:
+ViewModel resolution is handled by the view script and `GdvmBinder`:
 
 | Resolver | Behavior |
 |----------|----------|
@@ -103,7 +125,7 @@ field naming the node signal that drives the node → ViewModel direction.
 Three tiers, applied when writing a value to a node:
 
 1. **Built-in** — `str`, `bool_flip`, `percent`, `lowercase`, `uppercase`, `identity`.
-2. **Global** — `GdvmView.register_converter(name, callable)`.
+2. **Global** — `GdvmBinder.register_converter(name, callable)`.
 3. **Implicit** — identity fallback when no converter is named.
 
 ## MVVM Toolkit (CommunityToolkit-style)
@@ -129,4 +151,4 @@ stale value).
 breaking. Use with care.
 
 The previous DataNode/Observer/Writer/Binder data-binding layer has been
-**removed** in favor of the Unreal-ish `ObservableObject` + `GdvmView` stack.
+**removed** in favor of the code-first `ObservableObject` + `GdvmBinder` stack.

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://bber2ff5sj71"]
 
 [ext_resource type="Script" uid="uid://bhrphhmlb1ox3" path="res://examples/_9_widget_blueprint/main.gd" id="1_main"]
-[ext_resource type="Script" uid="uid://bgraomfuf3mly" path="res://addons/gdvm/core/view/gdvm_view.gd" id="2_rp6cu"]
 
 [node name="Main" type="Control" unique_id=581116055]
 layout_mode = 3
@@ -37,29 +36,14 @@ grow_vertical = 2
 [node name="GreetingLabel" type="Label" parent="Panel/VBox" unique_id=472109596]
 layout_mode = 2
 text = "Hello"
-metadata/_gdvm_binding = {
-"mode": 0,
-"path": "greeting",
-"prop": "text"
-}
 
 [node name="CountLabel" type="Label" parent="Panel/VBox" unique_id=589324417]
 layout_mode = 2
 text = "0"
-metadata/_gdvm_binding = {
-"mode": 0,
-"path": "count",
-"prop": "text"
-}
 
 [node name="WorldTimeLabel" type="Label" parent="Panel/VBox" unique_id=620155342]
 layout_mode = 2
 text = "--"
-metadata/_gdvm_binding = {
-"mode": 0,
-"path": "world_time",
-"prop": "text"
-}
 
 [node name="UpdateButton" type="Button" parent="Panel/VBox" unique_id=583754026]
 layout_mode = 2
@@ -73,6 +57,3 @@ text = "Increment Count"
 layout_mode = 2
 text = "Fetch World Time"
 
-[node name="GdvmView" type="Node" parent="." unique_id=1054197072]
-script = ExtResource("2_rp6cu")
-metadata/_custom_type_script = "uid://bgraomfuf3mly"

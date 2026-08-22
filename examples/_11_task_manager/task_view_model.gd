@@ -151,12 +151,12 @@ func clear_completed() -> void:
 func set_all_done(done: bool) -> void:
 	if all_items.is_empty():
 		return
-	var changed := false
+	var has_changes := false
 	for m: TaskItemModel in all_items:
 		if m.done != done:
-			changed = true
+			has_changes = true
 			break
-	if not changed:
+	if not has_changes:
 		return
 	_push_snapshot()
 	for m: TaskItemModel in all_items:
@@ -176,12 +176,12 @@ func edit_task(model: TaskItemModel, title: String = "", priority: int = -1, due
 	var trimmed := title.strip_edges()
 	if trimmed.is_empty():
 		trimmed = model.title
-	var changed := trimmed != model.title
+	var has_changes := trimmed != model.title
 	if priority >= 0 and priority != model.priority:
-		changed = true
+		has_changes = true
 	if due_date >= 0 and due_date != model.due_date:
-		changed = true
-	if not changed:
+		has_changes = true
+	if not has_changes:
 		return
 	_push_snapshot()
 	model.title = trimmed

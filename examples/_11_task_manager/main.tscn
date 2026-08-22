@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://bqg2d7cmtr5vo"]
 
 [ext_resource type="Script" uid="uid://dpgkv4o07s0tm" path="res://examples/_11_task_manager/main.gd" id="1_main"]
-[ext_resource type="Script" uid="uid://bgraomfuf3mly" path="res://addons/gdvm/core/view/gdvm_view.gd" id="2_gdvm"]
 
 [node name="Main" type="Control" unique_id=598090372]
 layout_mode = 3
@@ -11,9 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
-
-[node name="GdvmView" type="Node" parent="." unique_id=217475887]
-script = ExtResource("2_gdvm")
 
 [node name="Panel" type="Panel" parent="." unique_id=445769146]
 layout_mode = 1

@@ -18,7 +18,7 @@ var view_model: TodoViewModel
 var model: TodoItemModel
 
 
-## Invoked by the GdvmView list binding for each element. Because `item_prop`
+## Invoked by the GdvmBinder list binding for each element. Because `item_prop`
 ## is empty in the item scene's metadata, gdvm_view calls `set_item(element)`
 ## where element is the array value — the TodoItemModel. This fires BEFORE the
 ## node is added to the tree, so we just store the model and render in _ready().

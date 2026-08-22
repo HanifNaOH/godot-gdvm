@@ -3,7 +3,7 @@
 ##
 ## Holds only *view* logic: checkbox toggle, double-click-to-edit title, remove.
 ## All data mutation is delegated to the root TaskViewModel. The row receives
-## its backing TaskItemModel via the GdvmView list binding's `set_item()`.
+## its backing TaskItemModel via the GdvmBinder list binding's `set_item()`.
 extends VBoxContainer
 
 @onready var normal_mode_container := %NormalMode as PanelContainer
@@ -27,7 +27,7 @@ var _hovered: bool = false
 var _ready_called: bool = false
 
 
-## Invoked by the GdvmView list binding for each element. Fires BEFORE the node
+## Invoked by the GdvmBinder list binding for each element. Fires BEFORE the node
 ## enters the tree on first creation, but is ALSO called to update an existing
 ## (already in-tree) row in place when the list reconciles (filter/search/sort).
 ## So we store the model and, if the node is already ready, re-render immediately.

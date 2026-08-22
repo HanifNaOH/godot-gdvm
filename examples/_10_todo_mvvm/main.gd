@@ -3,14 +3,11 @@ extends Control
 ## TodoMainView
 ## The View code-behind for the root _10_todo_mvvm scene — thin, like example 9.
 ##
-##   1. Creates the single ViewModel (TodoViewModel) and hands it to the
-##      GdvmView child for declarative data binding (list + footer/header
-##      aggregates) declared via _gdvm_binding metadata in the scene.
+##   1. Creates the single ViewModel and declares explicit code-first bindings.
 ##   2. Binds each control's event to a ViewModel *function*.
 ##
 ## No business logic or state mutation lives here.
 
-@onready var gdvm_view: GdvmView = $GdvmView
 @onready var new_item_line_edit := %NewItem as LineEdit
 @onready var filter_all_button := %Filter/All as Button
 @onready var filter_active_button := %Filter/Active as Button
@@ -18,6 +15,7 @@ extends Control
 @onready var clear_completed_button := %ClearCompleted as Button
 
 var view_model: TodoViewModel
+var binder: GdvmBinder
 
 enum FilterState { ALL, ACTIVE, COMPLETED }
 var filter: FilterState = FilterState.ALL:
@@ -27,9 +25,17 @@ var filter: FilterState = FilterState.ALL:
 
 
 func _ready() -> void:
-	# Create the single ViewModel and let GdvmView bind it to the scene metadata.
+	# Create the single ViewModel and configure all bindings in code.
 	view_model = TodoViewModel.new()
-	gdvm_view.set_view_model(view_model)
+	binder = GdvmBinder.new(self)
+	binder.set_view_model(view_model)
+	binder.bind(%SelectAll, &"all_checked", "button_pressed", {
+		"mode": GdvmBinder.Mode.TWO_WAY,
+		"signal": &"toggled",
+	})
+	binder.bind_list(%Todos, &"items", preload("./item.tscn"))
+	binder.bind(%Footer, &"has_items", "visible")
+	binder.bind(%ItemsLeft, &"items_left_text", "text")
 
 	# Event binding: View events -> ViewModel functions.
 	new_item_line_edit.text_submitted.connect(_on_new_item_submitted)
@@ -37,6 +43,11 @@ func _ready() -> void:
 	filter_active_button.pressed.connect(func(): filter = FilterState.ACTIVE)
 	filter_completed_button.pressed.connect(func(): filter = FilterState.COMPLETED)
 	clear_completed_button.pressed.connect(view_model.clear_completed)
+
+
+func _exit_tree() -> void:
+	if binder != null:
+		binder.dispose()
 
 
 func _on_new_item_submitted(new_text: String) -> void:

@@ -3,7 +3,7 @@
 **Type:** Reference / Gap analysis (not an implementation plan)
 **Created:** 2026-08-14
 **Updated:** 2026-08-15 — re-anchored to the Unreal-ish MVVM layer (legacy DataNode/Observer/Writer deprecated)
-**Status:** Open for discussion
+**Status:** Reference only; not a production-readiness claim
 
 ---
 
@@ -13,8 +13,9 @@ Unreal Engine ships an official, performance-oriented MVVM framework (`UMVVMView
 `MVVMView`, `MVVMSubsystem`). This document compares its feature set against GDVM's MVVM
 implementation, and identifies where GDVM has an equivalent, a partial equivalent, or a gap.
 
-> This is **not** a roadmap. It is a comparison to clarify what GDVM already provides and
-> where the two systems differ, so future decisions are grounded.
+> This is **not** a roadmap or a claim that the implementation is production-ready. It is a
+> comparison to clarify the intended design vocabulary. The product priority is easy,
+> validated, inspector-driven binding in Godot; Unreal feature parity is secondary.
 
 ---
 
@@ -84,16 +85,23 @@ implementation, and identifies where GDVM has an equivalent, a partial equivalen
 
 ---
 
-## Gap summary
+## Binding-first gap summary
 
-Remaining gaps after the Unreal-ish rewrite:
+The highest-priority gaps are not Unreal feature gaps; they are requirements for
+making binding dependable and easy to author:
 
-1. **Editor plugin** — no inspector UI to author `_gdvm_binding` metadata (Phase 7, not implemented).
-2. **Implicit converters** — only identity fallback; no automatic type coercion (UE 5.8-style).
-3. **Per-item ViewModel resolution in lists** — list bindings reconcile a `template` scene per
-   element but do not resolve a per-item context/ViewModel.
-4. **`AsyncRelayCommand` awaitable coverage** — completion detection relies on a returned
-   `Signal`; coroutine/`await` return values are not handled.
+1. **Editor workflow** — no inspector UI creates or edits `_gdvm_binding` metadata.
+2. **Validation and diagnostics** — invalid paths, properties, signals, converters, and templates
+   need actionable editor and runtime errors.
+3. **Lifecycle** — ViewModel replacement, node removal, teardown, and ownership need explicit
+   contracts and tests.
+4. **Notification correctness** — bulk updates, hook timing, and custom change-signal overrides
+   need consistent behavior.
+5. **Metadata contract** — mode values must use one stable representation; documented strings and
+   runtime integer enums currently disagree.
+
+Secondary gaps are implicit converters, per-item ViewModel resolution, advanced collection
+diffing, and broader async command coverage. They should follow the binding production gate.
 
 ---
 
@@ -101,5 +109,4 @@ Remaining gaps after the Unreal-ish rewrite:
 
 - The legacy `utils.gd` type system and DataNode strict nodes are **deprecated**; they have no
   role in the Unreal-ish layer and are scheduled for removal.
-- Whether the remaining gaps (editor plugin, implicit converters, per-item VM resolution) are
-  worth addressing is tracked in [`plan_widget_blueprint_view.md`](./plan_widget_blueprint_view.md).
+- The binding-first roadmap and production gate are tracked in [`../PLAN.md`](../PLAN.md).

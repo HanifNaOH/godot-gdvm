@@ -1,14 +1,14 @@
 ## TaskManagerMainView
 ## The root View code-behind for _11_task_manager — thin, like example 9.
 ##
-##   1. Creates the single TaskViewModel and hands it to the GdvmView child for
-##      declarative data binding (list + aggregates + search + filter/sort).
+##   1. Creates the GdvmView and single TaskViewModel for explicit code-first
+##      data binding (list + aggregates + search + filter/sort).
 ##   2. Binds each control's event to a ViewModel *function*.
 ##
 ## No business logic or state mutation lives here.
 extends Control
 
-@onready var gdvm_view: GdvmView = $GdvmView
+var binder: GdvmBinder
 @onready var select_all_checkbox := %SelectAll as CheckBox
 @onready var new_task_line_edit := %NewTask as LineEdit
 @onready var search_line_edit := %Search as LineEdit
@@ -30,25 +30,26 @@ var view_model: TaskViewModel
 
 
 func _ready() -> void:
+	binder = GdvmBinder.new(self)
 	view_model = TaskViewModel.new()
-	gdvm_view.set_view_model(view_model)
+	binder.set_view_model(view_model)
 
 	# ── Code-first data bindings (VM -> node) ─────────────────────────────
 	# Footer visibility + aggregate label.
-	gdvm_view.bind(footer, "has_items", "visible")
-	gdvm_view.bind(active_left_label, "active_left_text", "text")
+	binder.bind(footer, "has_items", "visible")
+	binder.bind(active_left_label, "active_left_text", "text")
 	# Undo/Redo enabled state (can_undo true => disabled false).
-	gdvm_view.bind(undo_button, "can_undo", "disabled", {
+	binder.bind(undo_button, "can_undo", "disabled", {
 		"converter": &"bool_flip",
 	})
-	gdvm_view.bind(redo_button, "can_redo", "disabled", {
+	binder.bind(redo_button, "can_redo", "disabled", {
 		"converter": &"bool_flip",
 	})
 	# SelectAll checkbox reflects all_done (one-way VM -> node).
-	gdvm_view.bind(select_all_checkbox, "all_done", "button_pressed")
+	binder.bind(select_all_checkbox, "all_done", "button_pressed")
 	# The task list: instantiate one task_item.tscn per model in `items`.
 	# New rows slide in; removed rows slide out then free themselves.
-	gdvm_view.bind_list(tasks_container, "items", TaskRowScene, {
+	binder.bind_list(tasks_container, "items", TaskRowScene, {
 		"on_added": _slide_row_in,
 		"on_removed": _slide_row_out,
 	})
@@ -92,6 +93,11 @@ func _ready() -> void:
 	# Search: explicit event binding (avoids two_way echo that corrupts typing).
 	search_line_edit.text_changed.connect(view_model.set_search_text)
 	search_line_edit.text_submitted.connect(func(_t: String): search_line_edit.release_focus())
+
+
+func _exit_tree() -> void:
+	if binder != null:
+		binder.dispose()
 
 
 func _on_new_task_submitted(new_text: String) -> void:

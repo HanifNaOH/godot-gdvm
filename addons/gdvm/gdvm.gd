@@ -23,5 +23,5 @@ const RequestMessage = preload("./core/messaging/request_message.gd")
 # Dependency injection — service resolution (Unreal: MVVMSubsystem)
 const ServiceLocator = preload("./core/dependency_injection/service_locator.gd")
 
-# View — Widget-Blueprint-style declarative binding
-const GdvmView = preload("./core/view/gdvm_view.gd")
+# Code-first runtime binding
+const GdvmBinder = preload("./core/binding/gdvm_binder.gd")

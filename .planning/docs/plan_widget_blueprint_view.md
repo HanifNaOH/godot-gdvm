@@ -1,6 +1,10 @@
-# Plan: Unreal-ish MVVM (the sole retained architecture)
+# Plan: Code-first MVVM binding
 
-**Status:** Core implemented (Phases 0–6 done); legacy DataNode/Observer/Writer/Binder deprecated
+**Status:** Core implemented (Phases 0–6 done); 
+
+legacy DataNode/Observer/Writer/Binder deprecate
+
+
 **Created:** 2026-08-14
 **Updated:** 2026-08-15 (re-scoped: delete legacy layer, keep Unreal-ish MVVM)
 **Related:** [`mvvm_comparison_unreal.md`](./mvvm_comparison_unreal.md)
@@ -9,9 +13,8 @@
 
 ## 1. Goal
 
-Make the **Unreal-ish MVVM stack** the single supported architecture: `ObservableObject`
-ViewModel + `GdvmView` declarative binding, with a code-behind script for view logic — the
-Widget Blueprint (WBP) model adapted to Godot.
+Make code-first `ObservableObject` ViewModel + `GdvmBinder` binding the supported
+architecture, with a code-behind script for view logic.
 
 The legacy **DataNode / Observer / Writer / Binder** layer is deprecated and will be removed:
 it was the "UI-agnostic" imperative binding system (`ObserverPackTree`/`WriterPackTree` opts
@@ -89,18 +92,17 @@ metadata/_gdvm_binding = {
 > logic (converters, signal-getters) lives in the `GdvmView` code-behind. This mirrors Unreal's
 > split: data in the asset, logic in the code-behind.
 
-## 5. `GdvmView` base class (`extends Node`)
+## 5. `GdvmBinder` runtime class (`extends RefCounted`)
 
 Responsibilities:
-- `set_view_model(vm)` — store VM, trigger `_build_bindings()`
-- `_build_bindings()` — walk children, read `_gdvm_binding` metadata, instantiate the matching
-  `Observer`/`Writer`
-- Resolver support (Phase 5)
-- Code-behind surface: view scripts override hooks like `get_converter(path)` for logic
+- `set_view_model(vm)` — store VM and connect its change signal
+- `bind(node, path, prop, opts)` — create an explicit code-first binding
+- `bind_list(container, path, template, opts)` — create an explicit list binding
+- `dispose()` — disconnect all ViewModel and node signals and release rows/tweens
 
 ## 6. ViewModel contract (FieldNotify equivalent, Unreal §2)
 
-`GdvmView` binds to a **change-notifying** ViewModel. The VM must emit change notification:
+`GdvmBinder` binds to a **change-notifying** ViewModel. The VM must emit change notification:
 
 - **Variables** → `ObservableObject.changed` signal (via setters using `set_property`).
 - **Derived data** → a derived property kept in sync by a setter (simplest); an optional
@@ -178,7 +180,7 @@ Built as a minimal vertical slice first, then expanded outward.
 | Phase | What | Result |
 |-------|------|--------|
 | **0** | `ObservableObject.notify_property_changed(name)` + test | manual-broadcast parity (~5 lines) |
-| **1** | `GdvmView` (Node) + metadata read + `one_way` binding + a demo | proven core loop |
+| **1** | `GdvmBinder` (RefCounted) + explicit code-first `one_way` binding + a demo | proven core loop |
 | **2** | `one_way_to_source` + `two_way` (using `signal`) | bidirectional binding |
 | **3** | `set_view_model` polish (export + manual) | stable VM assignment |
 | **4** | `one_time` + list `template` + `items_changed` | static + collection rendering |
@@ -186,8 +188,8 @@ Built as a minimal vertical slice first, then expanded outward.
 | **6** | conversion system (built-ins → global lib → implicit) | type-mismatch handling |
 | **7** | `EditorPlugin` to author metadata in inspector | "Binding tab" DX |
 
-**Implementation status:** Phases 0–6 are **implemented** in `core/view/gdvm_view.gd` (with
-tests in `tests/unit/core/view/`). Phase 7 (editor plugin) is the only remaining item.
+**Implementation status:** The code-first runtime binder is implemented in
+`core/binding/gdvm_binder.gd`. Lifecycle hardening and optional editor tooling remain.
 
 **Recommended scope for the next version:** Phase 7 (editor plugin) plus the deprecation/removal
 of the legacy layer (see §11).
