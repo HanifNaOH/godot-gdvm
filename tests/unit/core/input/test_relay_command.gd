@@ -49,3 +49,16 @@ func test_notify_can_execute_changed_emits_signal() -> void:
 	cmd.notify_can_execute_changed()
 
 	assert_eq(emitted[0], 1)
+
+
+func test_execute_and_can_execute_receive_arguments() -> void:
+	var received: Array = []
+	var cmd := RelayCommand.new(
+		func(args): received.append(args),
+		func(args): return args[0] < args[1]
+	)
+
+	assert_true(cmd.can_execute([1, 2]))
+	cmd.execute([1, 2])
+	assert_false(cmd.can_execute([2, 1]))
+	assert_eq(received, [[1, 2]])

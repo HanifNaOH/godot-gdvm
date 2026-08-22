@@ -44,13 +44,19 @@ func _init(execute: Callable, can_execute: Callable = Callable()) -> void:
 		_can_execute = func() -> bool: return true
 
 ## Execute the command. Does nothing if can_execute() returns false.
-func execute() -> void:
-	if _can_execute.call():
-		_execute.call()
+## [args] Optional arguments passed as one Array to callbacks that accept them.
+func execute(args: Array = []):
+	if can_execute(args):
+		return _call_callback(_execute, args)
+	return null
 
 ## Check whether the command can currently execute.
-func can_execute() -> bool:
-	return _can_execute.call()
+## [args] Optional arguments passed as one Array to the predicate.
+func can_execute(args: Array = []) -> bool:
+	return _call_callback(_can_execute, args)
+
+static func _call_callback(callback: Callable, args: Array):
+	return callback.call() if callback.get_argument_count() == 0 else callback.call(args)
 
 ## Notify listeners that the can_execute state may have changed.
 ## Call this from your ViewModel whenever conditions that affect

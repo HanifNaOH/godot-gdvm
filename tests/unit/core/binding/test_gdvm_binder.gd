@@ -26,9 +26,33 @@ class BadVm:
 	var greeting: String = "bad"
 
 
+class ItemRow extends Node:
+	var item_view_model: Object
+	@onready var label := $Label as Label
+	var binder: GdvmBinder
+
+	func set_item_view_model(value: Object) -> void:
+		item_view_model = value
+		binder = GdvmBinder.new(self)
+		binder.set_view_model(value)
+		binder.bind(label, &"greeting", "text")
+
+
 func _make_label_scene() -> PackedScene:
 	var scene := PackedScene.new()
 	var root := Label.new()
+	var error := scene.pack(root)
+	assert_eq(error, OK)
+	return scene
+
+
+func _make_item_row_scene() -> PackedScene:
+	var scene := PackedScene.new()
+	var root := ItemRow.new()
+	var label := Label.new()
+	label.name = "Label"
+	root.add_child(label)
+	label.owner = root
 	var error := scene.pack(root)
 	assert_eq(error, OK)
 	return scene
@@ -294,6 +318,79 @@ func test_list_binding_reuses_rows_by_item_key_when_reordered() -> void:
 	autofree(view_owner)
 
 
+func test_list_binding_creates_per_item_view_models() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	add_child(view_owner)
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1}, {"id": 2}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	var created: Array = []
+	assert_true(binder.bind_list(container, &"items", _make_item_row_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(value):
+			var item_vm := Vm.new()
+			item_vm.greeting = "item_%d" % value["id"]
+			created.append(item_vm)
+			return item_vm,
+	}))
+
+	assert_eq(created.size(), 2)
+	assert_same((container.get_child(0) as ItemRow).item_view_model, created[0])
+	assert_same((container.get_child(1) as ItemRow).item_view_model, created[1])
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_each_item_view_model_drives_its_own_row_binder() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	add_child(view_owner)
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1}, {"id": 2}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind_list(container, &"items", _make_item_row_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(value):
+			var item_vm := Vm.new()
+			item_vm.greeting = "item_%d" % value["id"]
+			return item_vm,
+	}))
+	var first_row := container.get_child(0) as ItemRow
+	var second_row := container.get_child(1) as ItemRow
+
+	(first_row.item_view_model as Vm).greeting = "first updated"
+
+	assert_eq(first_row.label.text, "first updated")
+	assert_eq(second_row.label.text, "item_2")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_item_view_model_factory_rejects_rows_without_a_view_model_setter() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_false(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(_value): return Vm.new(),
+	}))
+	assert_eq(container.get_child_count(), 0)
+	assert_push_error("must implement set_item_view_model() or set_view_model()")
+	binder.dispose()
+	autofree(view_owner)
+
+
 func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
 	var view_owner := Node.new()
 	var container := VBoxContainer.new()
@@ -305,6 +402,7 @@ func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
 	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {
 		"item_prop": &"text",
 		"item_key": &"id",
+		"item_converter": func(value): return value["text"],
 	}))
 
 	vm.items = [{"id": 1, "text": "A2"}, {"id": 1, "text": "duplicate"}]
@@ -331,5 +429,229 @@ func test_missing_item_key_is_rejected_before_binding_creation() -> void:
 	}))
 	assert_eq(container.get_child_count(), 0)
 	assert_push_error("missing item_key 'id'")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_builtin_converters_transform_values() -> void:
+	var view_owner := Node.new()
+	var lower_label := Label.new()
+	var upper_label := Label.new()
+	var percent_label := Label.new()
+	var flip_label := Label.new()
+	view_owner.add_child(lower_label)
+	view_owner.add_child(upper_label)
+	view_owner.add_child(percent_label)
+	view_owner.add_child(flip_label)
+	var vm := Vm.new()
+	vm.greeting = "MiXeD"
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind(lower_label, &"greeting", "text", {"converter": &"lowercase"}))
+	assert_true(binder.bind(upper_label, &"greeting", "text", {"converter": &"uppercase"}))
+	assert_true(binder.bind(percent_label, &"greeting", "text", {"converter": &"percent"}))
+	assert_true(binder.bind(flip_label, &"greeting", "text", {"converter": &"bool_flip"}))
+
+	assert_eq(lower_label.text, "mixed")
+	assert_eq(upper_label.text, "MIXED")
+	assert_eq(percent_label.text, "0%")
+	assert_eq(flip_label.text, "false")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_callable_converter_updates_bound_node() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var vm := Vm.new()
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind(label, &"greeting", "text", {
+		"converter": func(value): return "[%s]" % value,
+	}))
+	assert_eq(label.text, "[hello]")
+	vm.greeting = "updated"
+	assert_eq(label.text, "[updated]")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_global_converter_can_be_registered_and_unregistered() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(Vm.new())
+	GdvmBinder.register_converter(&"bracket", func(value): return "<%s>" % value)
+	var second_label := Label.new()
+	view_owner.add_child(second_label)
+
+	assert_true(binder.bind(label, &"greeting", "text", {"converter": &"bracket"}))
+	assert_eq(label.text, "<hello>")
+	GdvmBinder.unregister_converter(&"bracket")
+
+	assert_false(binder.bind(second_label, &"greeting", "text", {"converter": &"bracket"}))
+	assert_push_error("unknown converter 'bracket'")
+	GdvmBinder.clear_converters()
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_one_way_to_source_binding_writes_back_to_view_model() -> void:
+	var view_owner := Node.new()
+	var edit := LineEdit.new()
+	view_owner.add_child(edit)
+	var vm := Vm.new()
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind(edit, &"greeting", "text", {
+		"mode": GdvmBinder.Mode.ONE_WAY_TO_SOURCE,
+		"signal": &"text_changed",
+	}))
+	edit.text = "from_node"
+	edit.text_changed.emit(edit.text)
+	assert_eq(vm.greeting, "from_node")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_on_changed_callback_receives_node_value_and_old_value() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var vm := Vm.new()
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	var calls: Array = []
+
+	assert_true(binder.bind(label, &"greeting", "text", {
+		"on_changed": func(node, value, old_value): calls.append([node, value, old_value]),
+	}))
+	vm.greeting = "next"
+
+	assert_eq(calls.size(), 2)
+	assert_same(calls[0][0], label)
+	assert_eq(calls[0][1], "hello")
+	assert_eq(calls[0][2], null)
+	assert_eq(calls[1][1], "next")
+	assert_eq(calls[1][2], "hello")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_setting_view_model_to_null_stops_existing_bindings() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var vm := Vm.new()
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	binder.bind(label, &"greeting", "text")
+	binder.set_view_model(null)
+
+	vm.greeting = "ignored"
+	assert_eq(label.text, "hello")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_list_binding_emits_added_and_removed_counts() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = ["A"]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	var changes: Array = []
+	binder.items_changed.connect(func(_container, added, removed): changes.append([added, removed]))
+
+	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {"item_prop": &"text"}))
+	vm.items = ["A", "B"]
+	vm.items = []
+
+	assert_eq(changes, [[1, 0], [1, 0], [0, 2]])
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_callable_item_converter_transforms_each_row() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"text": "one"}, {"text": "two"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_prop": &"text",
+		"item_converter": func(value): return value["text"].to_upper(),
+	}))
+	assert_eq((container.get_child(0) as Label).text, "ONE")
+	assert_eq((container.get_child(1) as Label).text, "TWO")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_item_view_model_factory_reuses_keyed_rows() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	add_child(view_owner)
+	view_owner.add_child(container)
+	var vm := ListVm.new()
+	vm.items = [{"id": 1}, {"id": 2}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+	var created: Array = []
+
+	assert_true(binder.bind_list(container, &"items", _make_item_row_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(value):
+			var item_vm := Vm.new()
+			item_vm.greeting = "item_%d" % value["id"]
+			created.append(item_vm)
+			return item_vm,
+	}))
+	var first_row := container.get_child(0)
+	var second_row := container.get_child(1)
+
+	vm.items = [{"id": 2}, {"id": 1}]
+
+	assert_eq(created.size(), 2)
+	assert_same(container.get_child(0), second_row)
+	assert_same(container.get_child(1), first_row)
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_invalid_callable_converter_is_rejected() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	view_owner.add_child(label)
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(Vm.new())
+
+	assert_false(binder.bind(label, &"greeting", "text", {"converter": Callable()}))
+	assert_push_error("converter must be a valid Callable")
+	binder.dispose()
+	autofree(view_owner)
+
+
+func test_invalid_item_view_model_factory_is_rejected() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	view_owner.add_child(container)
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(ListVm.new())
+
+	assert_false(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_view_model_factory": Callable(),
+	}))
+	assert_push_error("item_view_model_factory must be a valid Callable")
 	binder.dispose()
 	autofree(view_owner)

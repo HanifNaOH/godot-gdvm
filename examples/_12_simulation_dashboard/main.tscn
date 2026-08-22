@@ -1,0 +1,116 @@
+[gd_scene format=3 uid="uid://dj0u3txwplsw7"]
+
+[ext_resource type="Script" uid="uid://c4qh5j02gigce" path="res://examples/_12_simulation_dashboard/main.gd" id="1_main"]
+
+[node name="SimulationDashboard" type="Control" unique_id=175107028]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="." unique_id=2120982391]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035, 0.055, 0.075, 1)
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=2070591071]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = 28.0
+offset_right = -32.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="Header" type="HBoxContainer" parent="Layout" unique_id=694164869]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Layout/Header" unique_id=800644933]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 24
+text = "SIMULATION CONTROL"
+
+[node name="Status" type="Label" parent="Layout/Header" unique_id=1325821216]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.85, 0.65, 1)
+text = "Running"
+
+[node name="Tick" type="Label" parent="Layout/Header" unique_id=1779419550]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.72, 1)
+text = "0"
+
+[node name="Active" type="Label" parent="Layout/Header" unique_id=1917246533]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.72, 1)
+text = "0 active units"
+
+[node name="Columns" type="HBoxContainer" parent="Layout" unique_id=1525827943]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="UnitsPanel" type="VBoxContainer" parent="Layout/Columns" unique_id=1838382936]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="UnitsTitle" type="Label" parent="Layout/Columns/UnitsPanel" unique_id=894673332]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.72, 0.8, 1)
+text = "UNITS"
+
+[node name="Units" type="ItemList" parent="Layout/Columns/UnitsPanel" unique_id=349024719]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Inspector" type="VBoxContainer" parent="Layout/Columns" unique_id=273744275]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="InspectorTitle" type="Label" parent="Layout/Columns/Inspector" unique_id=1574072843]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.72, 0.8, 1)
+text = "SELECTED UNIT"
+
+[node name="Selected" type="Label" parent="Layout/Columns/Inspector" unique_id=1503842076]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.92, 0.95, 1)
+theme_override_font_sizes/font_size = 20
+text = "No unit selected"
+
+[node name="Health" type="ProgressBar" parent="Layout/Columns/Inspector" unique_id=2128957547]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EventsTitle" type="Label" parent="Layout/Columns/Inspector" unique_id=931830254]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.72, 0.8, 1)
+text = "EVENT LOG"
+
+[node name="Events" type="Label" parent="Layout/Columns/Inspector" unique_id=282866042]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.58, 0.66, 0.7, 1)
+text = "Simulation initialized"

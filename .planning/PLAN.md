@@ -124,9 +124,12 @@ covered by lifecycle tests.
 Only after the binding gate is met:
 
 - Improve implicit and two-way converters.
-- Add command cancellation, errors, progress, and argument support.
+- [x] Add command cancellation, errors, progress, and argument support.
 - Add stronger Messenger registration semantics where real use cases require it.
 - Expand async awaitable support.
+
+The command slice now supports optional argument arrays, logical cancellation,
+progress reporting, and explicit failure signaling.
 
 These are useful toolkit features, but they are not prerequisites for the core
 binding product.
@@ -147,3 +150,7 @@ toolkit exist. They should be treated as **prototype/partial**, not as
 production-complete. The next work is diagnostics, collection edge cases, and
 real-world example coverage; metadata/editor authoring is optional and follows
 the code-first API.
+
+The scalability example is `examples/_12_simulation_dashboard/`: one screen
+ViewModel coordinates child unit ViewModels, while the view keeps binding local
+and explicit.

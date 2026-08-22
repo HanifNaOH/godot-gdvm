@@ -28,6 +28,7 @@ class Binding:
 	var signal_name: StringName
 	var callback: Callable
 	var converter: StringName
+	var converter_callable: Callable
 	var reverse_converter: Callable
 	var on_changed: Callable
 	var tween_opts: Dictionary
@@ -40,6 +41,7 @@ class Binding:
 		prop = p_prop
 		mode = p_mode
 		converter = &""
+		converter_callable = Callable()
 		on_changed = Callable()
 		tween_opts = {}
 
@@ -49,7 +51,9 @@ class ListBinding:
 	var template: PackedScene
 	var item_prop: StringName
 	var item_converter: StringName
+	var item_converter_callable: Callable
 	var item_key: StringName
+	var item_view_model_factory: Callable
 	var item_nodes: Array = []
 	var item_identities: Array = []
 	var on_added: Callable
@@ -61,7 +65,9 @@ class ListBinding:
 		template = p_template
 		item_prop = p_item_prop
 		item_converter = &""
+		item_converter_callable = Callable()
 		item_key = &""
+		item_view_model_factory = Callable()
 		on_added = Callable()
 		on_removed = Callable()
 
@@ -115,24 +121,30 @@ func bind(node: Node, path: StringName, prop: String, opts: Dictionary = {}) -> 
 		push_error("GdvmBinder: unsupported binding mode '%s'." % opts.get("mode"))
 		return false
 	var binding := Binding.new(node, path, NodePath(prop), mode)
-	binding.converter = StringName(opts.get("converter", ""))
-	if not _validate_converter(binding.converter, "converter"):
+	var converter_value = opts.get("converter", "")
+	if converter_value is Callable:
+		if not converter_value.is_valid():
+			push_error("GdvmBinder: converter must be a valid Callable.")
+			return false
+		binding.converter_callable = converter_value
+	else:
+		binding.converter = _as_string_name(converter_value)
+	if not _validate_converter(binding.converter, "converter", binding.converter_callable):
 		return false
 	binding.on_changed = opts.get("on_changed", Callable())
 	if opts.get("tween", {}) is Dictionary:
 		binding.tween_opts = opts.get("tween", {})
 	if mode == Mode.ONE_WAY_TO_SOURCE or mode == Mode.TWO_WAY:
-		var signal_name := StringName(opts.get("signal", ""))
+		var signal_name := _as_string_name(opts.get("signal", ""))
 		if signal_name.is_empty() or not node.has_signal(signal_name):
 			push_error("GdvmBinder: node '%s' is missing binding signal '%s'." % [_node_label(node), signal_name])
 			return false
-		var reverse_converter = opts.get("reverse_converter", Callable())
-		if reverse_converter != null and not reverse_converter is Callable:
-			push_error("GdvmBinder: reverse_converter must be a valid Callable.")
-			return false
-		if reverse_converter is Callable and not reverse_converter.is_valid():
-			push_error("GdvmBinder: reverse_converter must be a valid Callable.")
-			return false
+		var reverse_converter: Callable = Callable()
+		if opts.has("reverse_converter"):
+			if not opts["reverse_converter"] is Callable or not opts["reverse_converter"].is_valid():
+				push_error("GdvmBinder: reverse_converter must be a valid Callable.")
+				return false
+			reverse_converter = opts["reverse_converter"]
 		binding.signal_name = signal_name
 		binding.callback = _make_node_callback(binding)
 		node.connect(signal_name, binding.callback)
@@ -148,17 +160,30 @@ func bind_list(container: Node, path: StringName, template: PackedScene, opts: D
 	if template == null or not template.can_instantiate():
 		push_error("GdvmBinder: list binding requires a valid container, path, and template.")
 		return false
-	var binding := ListBinding.new(container, path, template, StringName(opts.get("item_prop", "")))
-	binding.item_converter = StringName(opts.get("item_converter", ""))
-	binding.item_key = StringName(opts.get("item_key", ""))
-	if not _validate_converter(binding.item_converter, "item_converter"):
+	var binding := ListBinding.new(container, path, template, _as_string_name(opts.get("item_prop", "")))
+	var item_converter_value = opts.get("item_converter", "")
+	if item_converter_value is Callable:
+		if not item_converter_value.is_valid():
+			push_error("GdvmBinder: item_converter must be a valid Callable.")
+			return false
+		binding.item_converter_callable = item_converter_value
+	else:
+		binding.item_converter = _as_string_name(item_converter_value)
+	binding.item_key = _as_string_name(opts.get("item_key", ""))
+	if opts.has("item_view_model_factory"):
+		if not opts["item_view_model_factory"] is Callable or not opts["item_view_model_factory"].is_valid():
+			push_error("GdvmBinder: item_view_model_factory must be a valid Callable.")
+			return false
+		binding.item_view_model_factory = opts["item_view_model_factory"]
+	if not _validate_converter(binding.item_converter, "item_converter", binding.item_converter_callable):
 		return false
 	if not _validate_item_identities(_read_vm(path), binding.item_key):
 		return false
 	binding.on_added = opts.get("on_added", Callable())
 	binding.on_removed = opts.get("on_removed", Callable())
+	if not _reconcile_list(binding, _read_vm(path)):
+		return false
 	_list_bindings.append(binding)
-	_reconcile_list(binding, _read_vm(path))
 	return true
 
 func dispose() -> void:
@@ -194,10 +219,10 @@ func _validate_binding(node: Node, path: StringName, prop: String) -> bool:
 	if path.is_empty():
 		push_error("GdvmBinder: ViewModel path cannot be empty.")
 		return false
-	if not _view_model.get_property_list().any(func(p): return StringName(p.name) == path):
+	if not _view_model.get_property_list().any(func(p): return _as_string_name(p.name) == path):
 		push_error("GdvmBinder: ViewModel has no property '%s'." % path)
 		return false
-	if not prop.is_empty() and not node.get_property_list().any(func(p): return StringName(p.name) == StringName(prop)):
+	if not prop.is_empty() and not node.get_property_list().any(func(p): return _as_string_name(p.name) == _as_string_name(prop)):
 		push_error("GdvmBinder: node '%s' has no property '%s'." % [_node_label(node), prop])
 		return false
 	return true
@@ -205,7 +230,14 @@ func _validate_binding(node: Node, path: StringName, prop: String) -> bool:
 func _node_label(node: Node) -> String:
 	return str(node.get_path()) if node.is_inside_tree() else node.name
 
-func _validate_converter(name: StringName, field_name: String) -> bool:
+func _as_string_name(value) -> StringName:
+	if value is StringName:
+		return value
+	return StringName(str(value))
+
+func _validate_converter(name: StringName, field_name: String, converter: Callable = Callable()) -> bool:
+	if converter.is_valid():
+		return true
 	if name.is_empty() or name == &"identity" or name in [&"str", &"bool_flip", &"percent", &"lowercase", &"uppercase"]:
 		return true
 	if _global_converters.has(name) and _global_converters[name] is Callable and _global_converters[name].is_valid():
@@ -215,7 +247,7 @@ func _validate_converter(name: StringName, field_name: String) -> bool:
 
 func _mode_from_value(value) -> int:
 	if value is String or value is StringName:
-		match StringName(value):
+		match _as_string_name(value):
 			&"one_way": return Mode.ONE_WAY
 			&"one_time": return Mode.ONE_TIME
 			&"one_way_to_source": return Mode.ONE_WAY_TO_SOURCE
@@ -227,9 +259,9 @@ func _resolve_change_signal(vm: Object) -> StringName:
 	if script != null:
 		var constants := script.get_script_constant_map()
 		if constants.has("CHANGE_SIGNAL"):
-			return StringName(constants["CHANGE_SIGNAL"])
-	if "change_signal" in vm and not StringName(vm.get("change_signal")).is_empty():
-		return StringName(vm.get("change_signal"))
+			return _as_string_name(constants["CHANGE_SIGNAL"])
+	if "change_signal" in vm and not _as_string_name(vm.get("change_signal")).is_empty():
+		return _as_string_name(vm.get("change_signal"))
 	return &"changed"
 
 func _read_vm(path: StringName):
@@ -246,12 +278,12 @@ func _apply(binding: Binding, value, old_value) -> void:
 	if binding.on_changed.is_valid():
 		binding.on_changed.call(binding.node, value, old_value)
 	elif binding.tween_opts.is_empty():
-		binding.node.set_indexed(binding.prop, _convert(value, binding.converter))
+		binding.node.set_indexed(binding.prop, _convert(value, binding.converter, binding.converter_callable))
 	else:
 		if binding.tween != null and binding.tween.is_valid():
 			binding.tween.kill()
 		binding.tween = _owner.create_tween()
-		binding.tween.tween_property(binding.node, binding.prop, _convert(value, binding.converter), float(binding.tween_opts.get("duration", 0.25)))
+		binding.tween.tween_property(binding.node, binding.prop, _convert(value, binding.converter, binding.converter_callable), float(binding.tween_opts.get("duration", 0.25)))
 
 func _make_node_callback(binding: Binding) -> Callable:
 	return func(_a = null, _b = null, _c = null): _on_node_changed(binding)
@@ -296,10 +328,10 @@ func _prune_invalid_bindings() -> void:
 				binding.item_nodes.remove_at(item_i)
 				binding.item_identities.remove_at(item_i)
 
-func _reconcile_list(binding: ListBinding, value) -> void:
+func _reconcile_list(binding: ListBinding, value) -> bool:
 	var values: Array = value if value is Array else []
 	if not _validate_item_identities(values, binding.item_key):
-		return
+		return false
 	var old_nodes := binding.item_nodes.duplicate()
 	var old_identities := binding.item_identities.duplicate()
 	var old_by_identity: Dictionary = {}
@@ -314,11 +346,15 @@ func _reconcile_list(binding: ListBinding, value) -> void:
 		var is_new := item == null or not is_instance_valid(item)
 		if is_new:
 			item = binding.template.instantiate()
+			binding.container.add_child(item)
+			if not _assign_item_view_model(binding, item, values[i]):
+				binding.container.remove_child(item)
+				item.queue_free()
+				return false
 		else:
 			old_by_identity.erase(identity)
-		_write_item(item, binding.item_prop, values[i], binding.item_converter)
+		_write_item(item, binding.item_prop, values[i], binding.item_converter, binding.item_converter_callable)
 		if is_new:
-			binding.container.add_child(item)
 			added += 1
 			if binding.on_added.is_valid(): binding.on_added.call(item)
 		next_nodes.append(item)
@@ -337,6 +373,7 @@ func _reconcile_list(binding: ListBinding, value) -> void:
 	binding.item_identities = next_identities
 	if added > 0 or removed > 0:
 		items_changed.emit(binding.container, added, removed)
+	return true
 
 func _item_identity(value, key: StringName, index: int):
 	if not key.is_empty():
@@ -369,16 +406,31 @@ func _validate_item_identities(value, key: StringName) -> bool:
 		identities[identity] = i
 	return true
 
-func _write_item(item: Node, prop: StringName, value, converter: StringName) -> void:
-	if not prop.is_empty(): item.set(prop, _convert(value, converter))
+func _write_item(item: Node, prop: StringName, value, converter: StringName, converter_callable: Callable = Callable()) -> void:
+	if not prop.is_empty(): item.set(prop, _convert(value, converter, converter_callable))
 	elif item.has_method("bind"): item.bind(value)
 	elif item.has_method("set_item"): item.set_item(value)
 
-func _convert(value, name: StringName):
+func _assign_item_view_model(binding: ListBinding, item: Node, value) -> bool:
+	if not binding.item_view_model_factory.is_valid():
+		return true
+	var item_view_model = binding.item_view_model_factory.call(value)
+	if item.has_method("set_item_view_model"):
+		item.set_item_view_model(item_view_model)
+	elif item.has_method("set_view_model"):
+		item.set_view_model(item_view_model)
+	else:
+		push_error("GdvmBinder: list item '%s' must implement set_item_view_model() or set_view_model()." % _node_label(item))
+		return false
+	return true
+
+func _convert(value, name: StringName, converter: Callable = Callable()):
+	if converter.is_valid():
+		return converter.call(value)
 	match name:
 		&"", &"identity": return value
 		&"str": return str(value)
-		&"bool_flip": return not bool(value)
+		&"bool_flip": return not value
 		&"percent": return "%d%%" % int(float(value) * 100.0)
 		&"lowercase": return String(value).to_lower()
 		&"uppercase": return String(value).to_upper()

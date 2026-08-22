@@ -66,9 +66,12 @@ func _exit_tree() -> void:
 	binder.dispose()
 ```
 
-authored bindings and future editor tooling. It is not required for code-first
 Binding is code-first; scene metadata is not required. See
 `examples/_11_task_manager/` for the full pattern.
+
+For a larger UI, see `examples/_12_simulation_dashboard/`. It demonstrates a
+screen ViewModel coordinating child unit ViewModels while the view keeps its
+bindings and UI behavior explicit.
 
 ## Project status
 
@@ -121,6 +124,17 @@ binder.bind_list(%Tasks, &"items", TaskRowScene, {
 })
 ```
 
+For rows with independent state or behavior, provide an
+`item_view_model_factory`. Each created row must implement
+`set_item_view_model(view_model)` or `set_view_model(view_model)`:
+
+```gdscript
+binder.bind_list(%Units, &"units", UnitRowScene, {
+	"item_key": &"id",
+	"item_view_model_factory": func(unit): return UnitViewModel.new(unit),
+})
+```
+
 ### ViewModel resolvers
 
 ViewModels are created by the view or composition root and receive their
@@ -143,7 +157,9 @@ A closure that captures the recipient intentionally keeps it alive.
 GDVM also ships the companion abstractions documented in
 [`MVVM_TOOLKIT.md`](MVVM_TOOLKIT.md):
 
-- `RelayCommand` / `AsyncRelayCommand` — commands (Unreal: ICommand).
+- `RelayCommand` / `AsyncRelayCommand` — commands (Unreal: ICommand). Commands
+	accept an optional argument array; async commands also expose cancellation,
+	progress, and failure signals.
 - `Messenger` / `RequestMessage` — decoupled pub/sub and request/response.
 - `ObservableRecipient` — `ObservableObject` + automatic `Messenger` lifecycle.
 

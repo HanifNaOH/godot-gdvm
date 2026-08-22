@@ -72,6 +72,14 @@ var heal_command = RelayCommand.new(
 heal_button.pressed.connect(vm.heal_command.execute)
 ```
 
+Commands can receive an optional argument array. A callback that declares an
+argument receives the array as its first argument:
+
+```gdscript
+var select_command = RelayCommand.new(func(args): _player.select(args[0]))
+select_button.pressed.connect(func(): select_command.execute([player_id]))
+```
+
 ### `AsyncRelayCommand`
 An asynchronous variant. It handles `await` automatically, preventing double-execution while it is running, and emits an `execution_state_changed(is_running)` signal for loading spinners.
 
@@ -85,6 +93,11 @@ vm.save_command.execution_state_changed.connect(func(running):
 	save_spinner.visible = running 
 )
 ```
+
+`AsyncRelayCommand` also exposes `cancel()`, `report_progress(value)`, and
+`fail(error)`. These emit `execution_cancelled`, `progress_changed(value)`,
+and `execution_failed(error)` respectively. Cancellation stops tracking the
+current operation; it does not forcibly interrupt the underlying work.
 
 ---
 

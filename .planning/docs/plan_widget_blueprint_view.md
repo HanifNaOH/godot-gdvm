@@ -1,195 +1,88 @@
-# Plan: Code-first MVVM binding
+# Plan: Scalable Code-First MVVM
 
-**Status:** Core implemented (Phases 0–6 done); 
+**Status:** Runtime binder implemented; per-item ViewModel support implemented
 
-legacy DataNode/Observer/Writer/Binder deprecate
+## Goal
 
+Support large Godot UIs without forcing one giant ViewModel or one giant binder.
+Views declare bindings in their own scripts, and list rows may own independent
+ViewModels when their behavior becomes substantial.
 
-**Created:** 2026-08-14
-**Updated:** 2026-08-15 (re-scoped: delete legacy layer, keep Unreal-ish MVVM)
-**Related:** [`mvvm_comparison_unreal.md`](./mvvm_comparison_unreal.md)
+## Architecture
 
----
-
-## 1. Goal
-
-Make code-first `ObservableObject` ViewModel + `GdvmBinder` binding the supported
-architecture, with a code-behind script for view logic.
-
-The legacy **DataNode / Observer / Writer / Binder** layer is deprecated and will be removed:
-it was the "UI-agnostic" imperative binding system (`ObserverPackTree`/`WriterPackTree` opts
-dicts, manual lambdas). That layer carries no binding metadata in the scene; the new `GdvmView`
-moves binding **into the `.tscn`** as node metadata, matching WBP's "asset declares look AND
-binding".
-
-## 2. Locked decisions
-
-These are final; everything below follows from them.
-
-| # | Decision | Rationale |
-|---|----------|-----------|
-| D1 | `GdvmView` **extends `Node`**, not `Control` | UI-agnostic; the binder only needs `Node` API (`get_node`, `get_children`, `child_order_changed`, `add_child`, `set_indexed`). Works for `Control`/`Node2D`/`Node3D` roots. |
-| D2 | **Default ViewModel = `ObservableObject`** | Simpler to author (plain class + setters), pairs with the existing toolkit, and avoids the DataNode/strict machinery on the view side. |
-| D3 | `DataTree` is **deprecated** (legacy) | Replaced by `ObservableObject` + `GdvmView`; removed from the public surface. |
-| D4 | Binding is **metadata on scene nodes** (`_gdvm_binding`) | Data lives in the `.tscn`; logic lives in the `GdvmView` code-behind. |
-| D5 | Build **smallest vertical slice first** | Prove the loop (metadata → `one_way` bind → demo) before expanding. |
-
-## 3. Architecture
-
-```
-Model (plain data) → ViewModel (ObservableObject) → View (.tscn + GdvmView)
-     "source data"        "translator, change-      "visual + binding metadata,
-                          notifying via changed"      no business logic"
+```text
+ScreenView
+  owns ScreenViewModel + GdvmBinder
+  -> SectionView
+       owns SectionViewModel + GdvmBinder
+  -> ListView
+       owns ListViewModel + GdvmBinder
+       -> RowView
+            owns RowViewModel + GdvmBinder
 ```
 
-### Three pillars (Unreal §1)
+A child ViewModel is justified when a UI component owns meaningful state or
+behavior such as commands, validation, loading, permissions, or async work.
+Simple rows can continue receiving a plain model and using the parent ViewModel.
 
-  Not observable by the view.
-  and exposes **view-ready** properties + signals. The "translator".
-  metadata. Binding `path` addresses the **ViewModel, never the Model**.
+## Code-first binding contract
 
-### Core shape
+`GdvmBinder` extends `RefCounted` and is owned by a real view `Node`. It is not
+added to the scene tree.
 
-```
-┌─ View (a .tscn, root has GdvmView script) ─────────────┐
-│  Nodes with metadata/_gdvm_binding annotations         │
-│  └─ GdvmView (extends Node) base:                      │
-│       set_view_model(vm) → scans scene → builds        │
-│       Observer/Writer from metadata → binds            │
-└────────────────────────────────────────────────────────┘
+```gdscript
+binder = GdvmBinder.new(self)
+binder.set_view_model(view_model)
+binder.bind(%Title, &"title", "text")
 ```
 
-## 4. Binding annotation (scene metadata)
+The view must call `binder.dispose()` in `_exit_tree()`. The binder also listens
+to the owner's `tree_exiting` signal as a safety net.
 
-Per-node, stored in `.tscn` metadata (data-only, serializable):
+## Per-item ViewModel contract
 
-```tscn
-[node name="HealthLabel" type="Label" parent="Panel"]
-text = "HP"
-metadata/_gdvm_binding = {
-  "path": "health_text",      # key into the ViewModel (property name for ObservableObject)
-  "prop": "text",             # the node property to bind
-  "mode": "one_way",          # one_way | two_way | one_way_to_source | one_time
-  "signal": "text_changed",   # (two_way / one_way_to_source only) node → VM source signal
-  "template": "item.tscn"     # (list binding only) sub-scene instantiated per element
-}
+`bind_list()` accepts an optional `item_view_model_factory` callable. The factory
+receives the collection element and returns that row's ViewModel. The row scene
+must implement one of:
+
+```gdscript
+func set_item_view_model(view_model: Object) -> void:
+    ...
+
+# or
+func set_view_model(view_model: Object) -> void:
+    ...
 ```
 
-### Field semantics
+Example:
 
-| Field | When required | Purpose |
-|-------|---------------|---------|
-| `path` | always | VM property name (or DataNode path) |
-| `prop` | always | target node property |
-| `mode` | always | binding direction |
-| `signal` | `two_way`, `one_way_to_source` | which node signal drives node → VM |
-| `template` | list binding | sub-scene to instantiate per element |
+```gdscript
+binder.bind_list(%Units, &"units", UnitRowScene, {
+    "item_key": &"id",
+    "item_view_model_factory": func(unit): return UnitViewModel.new(unit),
+})
+```
 
-> **Constraint:** `.tscn` metadata cannot hold `Callable`s. Data-only fields live in metadata;
-> logic (converters, signal-getters) lives in the `GdvmView` code-behind. This mirrors Unreal's
-> split: data in the asset, logic in the code-behind.
+The parent binder creates and assigns row ViewModels. The row owns its local
+binder and presentation lifecycle. Existing rows are reused by `item_key` during
+reordering; duplicate, missing, or empty keys are rejected before mutation.
 
-## 5. `GdvmBinder` runtime class (`extends RefCounted`)
+## Responsibilities
 
-Responsibilities:
+- `ObservableObject`: ViewModel state and change notifications
+- `GdvmBinder`: local property/list binding, signal connections, conversion, cleanup
+- View script: creates dependencies, creates ViewModels, declares bindings, handles
+  view-specific events
+- Model/network layer: authoritative data and multiplayer synchronization
+- Row ViewModel: row-specific state and behavior when needed
 
-## 6. ViewModel contract (FieldNotify equivalent, Unreal §2)
+GDVM does not own networking, authority, replication, or RPC behavior. Each peer
+creates local ViewModels and binders from its current presentation state.
 
-`GdvmBinder` binds to a **change-notifying** ViewModel. The VM must emit change notification:
+## Deferred work
 
-  `get_derived(path)` view override for computed values (Phase 6).
-  the `UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED` equivalent).
-
-> **Change routing.** The `changed` signal carries `property_name` (and old/new values). The
-> binding engine must **filter by `property_name`** and map it back to the matching `path` so a
-> single VM `changed` emission updates only the affected binding(s), not the whole view.
-
-## 7. Binding modes (Unreal §3)
-
-| Mode | Direction | Use | Phase |
-|------|-----------|-----|-------|
-| `one_way` | VM → node | labels, health bars | 1 |
-| `one_way_to_source` | node → VM | (rare; driven by `signal`) | 2 |
-| `two_way` | VM ↔ node | checkboxes, sliders, inputs | 2 |
-| `one_time` | set once at build | static data (perf) | 4 |
-
-### Loop guard (two-way, Phase 2) — **critical**
-
-`two_way` has an echo hazard: the writer sets a node property, which may re-emit `signal`, which
-the observer feeds back into the VM, which re-emits `changed`, ad infinitum. Whether this
-happens depends on the node type — e.g. setting `LineEdit.text` programmatically **does** emit
-`text_changed`, while setting `CheckBox.button_pressed` **does not** emit `pressed`.
-
-To make `two_way` safe regardless of node type, the binding engine must track **change source**:
-  value it just received from the `Writer` (no-op on echo), or
-  property set is not interpreted as a user edit.
-
-Recommended: per-binding **source-tagging** — mark writes as `FROM_VM`; the observer ignores
-`signal` emissions originating from its own writer. This must be designed into Phase 2, not
-retro-fitted.
-
-## 8. ViewModel resolvers (Unreal §4, Phase 5)
-
-| Resolver | Behavior |
-|----------|----------|
-| `create_instance` | View creates its own VM instance |
-| `manual` | caller provides VM via `set_view_model` |
-| `global` | resolve from `ServiceLocator` |
-| `context` | walk up the parent scene for an ancestor with a VM |
-
-## 9. List / panel view extensions (Unreal §7, Phase 4)
-
-When a bound property is a collection:
-  (reuse `WriterNode`/`DataNodeList` + the `template` sub-scene).
-  `OnItemsChanged` equivalent.
-
-## 10. Conversion functions (Unreal §5, Phase 6)
-
-Three tiers (all in code-behind / a conversion library, since metadata can't hold `Callable`s):
-1. **Built-in** — number→text, bool flip, number→percent, string case, identity no-op.
-2. **Global library** — a static registry of reusable converters (`SecondsToMinutes`,
-   `ItemTypeToIcon`) analogous to `UMVVMConversionLibraries`.
-3. **Implicit** — default fallback on type mismatch (UE 5.8-style), overridable per view.
-
-## 11. What we keep vs. remove
-
-  `AsyncRelayCommand`, `Messenger`, `RequestMessage`, `ServiceLocator`) + `GdvmView`.
-  `DataTree`/`ObserverPack`/`WriterPack` binder, and `utils.gd`.
-
-## 12. Phased implementation
-
-Built as a minimal vertical slice first, then expanded outward.
-
-| Phase | What | Result |
-|-------|------|--------|
-| **0** | `ObservableObject.notify_property_changed(name)` + test | manual-broadcast parity (~5 lines) |
-| **1** | `GdvmBinder` (RefCounted) + explicit code-first `one_way` binding + a demo | proven core loop |
-| **2** | `one_way_to_source` + `two_way` (using `signal`) | bidirectional binding |
-| **3** | `set_view_model` polish (export + manual) | stable VM assignment |
-| **4** | `one_time` + list `template` + `items_changed` | static + collection rendering |
-| **5** | 4 resolvers (create/manual/global/context) | WBP-style VM discovery |
-| **6** | conversion system (built-ins → global lib → implicit) | type-mismatch handling |
-| **7** | `EditorPlugin` to author metadata in inspector | "Binding tab" DX |
-
-**Implementation status:** The code-first runtime binder is implemented in
-`core/binding/gdvm_binder.gd`. Lifecycle hardening and optional editor tooling remain.
-
-**Recommended scope for the next version:** Phase 7 (editor plugin) plus the deprecation/removal
-of the legacy layer (see §11).
-
-## 13. Unreal feature coverage
-
-| Unreal feature | Plan section | Status |
-|----------------|-------------|--------|
-| §1 Core architecture (Model/VM/View) | §3 | ✅ Model separation explicit |
-| §2 FieldNotify (vars, functions, manual) | §6 | ✅ + Phase 0 helper |
-| §3 Binding modes (One/Two/One-to-Src/One-Time) | §7 | ✅ + `signal` field + loop guard |
-| §4 ViewModel resolvers (4) | §8 | ✅ |
-| §5 Conversion functions | §10 | ✅ 3-tier |
-| §6 C++ macros / setter control | §11 (keep) | ✅ inherited |
-| §7 Panel view extensions (lists) | §9 | ✅ + `template` field |
-| §8 Performance & best practices | §11 (keep) | ✅ WeakRef/event-driven/testable |
-
-## 14. Open questions (remaining)
-
-  `core/writer`, `binder/`) and its tests/examples (`_1`–`_7`).
+- Per-item context inheritance beyond explicit factory assignment
+- Virtualized lists for very large collections
+- More advanced collection diffing and batching
+- Runtime binding inspection tools
+- Optional editor authoring, only if code-first binding proves insufficient
