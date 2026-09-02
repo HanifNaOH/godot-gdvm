@@ -38,6 +38,16 @@ class ItemRow extends Node:
 		binder.bind(label, &"greeting", "text")
 
 
+class FailingItemRow extends Node:
+	var item_view_model: Object
+
+	func set_item_view_model(value: Object) -> bool:
+		if value is Vm and value.greeting == "reject":
+			return false
+		item_view_model = value
+		return true
+
+
 func _make_label_scene() -> PackedScene:
 	var scene := PackedScene.new()
 	var root := Label.new()
@@ -54,6 +64,15 @@ func _make_item_row_scene() -> PackedScene:
 	label.name = "Label"
 	root.add_child(label)
 	label.owner = root
+	var error := scene.pack(root)
+	assert_eq(error, OK)
+	root.free()
+	return scene
+
+
+func _make_failing_item_row_scene() -> PackedScene:
+	var scene := PackedScene.new()
+	var root := FailingItemRow.new()
 	var error := scene.pack(root)
 	assert_eq(error, OK)
 	root.free()
@@ -199,6 +218,30 @@ func test_invalid_view_model_does_not_replace_current_view_model() -> void:
 	autofree(view_owner)
 
 
+func test_invalid_replacement_list_does_not_report_success_or_mutate_rows() -> void:
+	var view_owner := Node.new()
+	var container := VBoxContainer.new()
+	view_owner.add_child(container)
+	var first_vm := ListVm.new()
+	first_vm.items = [{"id": 1, "text": "A"}]
+	var second_vm := ListVm.new()
+	second_vm.items = [{"id": 1, "text": "B"}, {"id": 1, "text": "duplicate"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(first_vm)
+	assert_true(binder.bind_list(container, &"items", _make_label_scene(), {
+		"item_prop": &"text",
+		"item_key": &"id",
+		"item_converter": func(value): return value["text"],
+	}))
+
+	assert_false(binder.set_view_model(second_vm))
+	assert_eq(container.get_child_count(), 1)
+	assert_eq((container.get_child(0) as Label).text, "A")
+	assert_push_error("duplicate item_key")
+	binder.dispose()
+	view_owner.free()
+
+
 func test_two_way_binding_can_reverse_convert_node_value() -> void:
 	var view_owner := Node.new()
 	var edit := LineEdit.new()
@@ -289,6 +332,29 @@ func test_multiple_bindings_receive_updates() -> void:
 
 	assert_eq(first.text, "both")
 	assert_eq(second.text, "both")
+	autofree(view_owner)
+
+
+func test_one_value_updates_multiple_visual_properties() -> void:
+	var view_owner := Node.new()
+	var label := Label.new()
+	var progress := ProgressBar.new()
+	view_owner.add_child(label)
+	view_owner.add_child(progress)
+	var vm := IntVm.new()
+	vm.number = 25
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(vm)
+
+	assert_true(binder.bind(label, &"number", "text", {"converter": &"percent"}))
+	assert_true(binder.bind(progress, &"number", "value"))
+	assert_eq(label.text, "2500%")
+	assert_eq(progress.value, 25.0)
+
+	vm.number = 40
+	assert_eq(label.text, "4000%")
+	assert_eq(progress.value, 40.0)
+	binder.dispose()
 	autofree(view_owner)
 
 
@@ -412,6 +478,7 @@ func test_duplicate_item_keys_are_rejected_without_mutating_rows() -> void:
 	assert_eq(container.get_child_count(), 1)
 	assert_eq((container.get_child(0) as Label).text, "A")
 	assert_push_error("duplicate item_key")
+	assert_push_error("failed to reconcile list binding")
 	binder.dispose()
 	view_owner.free()
 
@@ -673,6 +740,33 @@ func test_replacing_parent_view_model_replaces_nested_item_view_models() -> void
 	assert_eq(created.size(), 2)
 	assert_not_same(row.item_view_model, original_item_vm)
 	assert_eq(row.label.text, "vm_1_1")
+	binder.dispose()
+	view_owner.free()
+
+
+func test_failed_item_view_model_assignment_rejects_replacement() -> void:
+	var view_owner := Node.new()
+	var container := Node.new()
+	view_owner.add_child(container)
+	var first_vm := ListVm.new()
+	first_vm.items = [{"id": 1, "name": "first"}]
+	var second_vm := ListVm.new()
+	second_vm.items = [{"id": 1, "name": "reject"}]
+	var binder := GdvmBinder.new(view_owner)
+	binder.set_view_model(first_vm)
+	assert_true(binder.bind_list(container, &"items", _make_failing_item_row_scene(), {
+		"item_key": &"id",
+		"item_view_model_factory": func(value):
+			var item_vm := Vm.new()
+			item_vm.greeting = value["name"]
+			return item_vm,
+	}))
+	var row := container.get_child(0) as FailingItemRow
+	var original_item_vm := row.item_view_model
+
+	assert_false(binder.set_view_model(second_vm))
+	assert_same(row.item_view_model, original_item_vm)
+	assert_push_error("rejected its ViewModel")
 	binder.dispose()
 	view_owner.free()
 

@@ -7,7 +7,7 @@ class_name GdvmBinder
 extends RefCounted
 
 ## Binding direction modes.
-enum Mode { ONE_WAY, ONE_TIME, ONE_WAY_TO_SOURCE, TWO_WAY }
+enum Mode {ONE_WAY, ONE_TIME, ONE_WAY_TO_SOURCE, TWO_WAY}
 
 static var _global_converters: Dictionary = {}
 
@@ -98,6 +98,11 @@ func set_view_model(vm: Object) -> bool:
 		if not vm.has_signal(signal_name):
 			push_error("GdvmBinder: ViewModel is missing signal '%s'." % signal_name)
 			return false
+		for list_binding in _list_bindings:
+			if not _validate_item_identities(vm.get(list_binding.path), list_binding.item_key):
+				return false
+	var previous_vm: Object = _view_model
+	var previous_signal: StringName = _change_signal
 	_clear_connections()
 	_view_model = vm
 	if vm == null:
@@ -107,7 +112,15 @@ func set_view_model(vm: Object) -> bool:
 	for binding in _bindings:
 		_push(binding)
 	for list_binding in _list_bindings:
-		_reconcile_list(list_binding, _read_vm(list_binding.path), true)
+		if not _reconcile_list(list_binding, _read_vm(list_binding.path), true):
+			_clear_connections()
+			_view_model = previous_vm
+			_change_signal = previous_signal
+			if is_instance_valid(previous_vm) and previous_vm.has_signal(previous_signal):
+				previous_vm.connect(previous_signal, _on_vm_changed)
+			for binding in _bindings:
+				_push(binding)
+			return false
 	return true
 
 func get_view_model() -> Object:
@@ -329,7 +342,8 @@ func _on_vm_changed(property_name: StringName, old_value, new_value) -> void:
 			var value = new_value
 			if property_name.is_empty() and new_value is Dictionary:
 				value = new_value.get(binding.path, _read_vm(binding.path))
-			_reconcile_list(binding, value)
+			if not _reconcile_list(binding, value):
+				push_error("GdvmBinder: failed to reconcile list binding for '%s'." % binding.path)
 
 func _prune_invalid_bindings() -> void:
 	for i in range(_bindings.size() - 1, -1, -1):
@@ -437,12 +451,16 @@ func _assign_item_view_model(binding: ListBinding, item: Node, value) -> bool:
 	if not binding.item_view_model_factory.is_valid():
 		return true
 	var item_view_model = binding.item_view_model_factory.call(value)
+	var result = null
 	if item.has_method("set_item_view_model"):
-		item.set_item_view_model(item_view_model)
+		result = item.set_item_view_model(item_view_model)
 	elif item.has_method("set_view_model"):
-		item.set_view_model(item_view_model)
+		result = item.set_view_model(item_view_model)
 	else:
 		push_error("GdvmBinder: list item '%s' must implement set_item_view_model() or set_view_model()." % _node_label(item))
+		return false
+	if result is bool and not result:
+		push_error("GdvmBinder: list item '%s' rejected its ViewModel." % _node_label(item))
 		return false
 	return true
 
